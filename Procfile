@@ -1,2 +1,2 @@
 # Define the web process for the backend server
-web: cd server && npm install && node index.js 
+web: cd server && npm install && npm start 
