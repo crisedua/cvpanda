@@ -33,6 +33,14 @@ if (process.env.APIFY_API_TOKEN) {
 }
 
 const app = express();
+
+// Add custom header middleware *before* CORS
+app.use((req, res, next) => {
+  // Add a unique header to verify deployment
+  res.setHeader('X-CVPANDA-BACKEND-VERSION', 'cors-check-v1'); 
+  next();
+});
+
 app.use(cors({
   origin: ['https://cvpanda.info', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -164,6 +172,9 @@ function generateSearchTermsFromCV(cvData) {
 
 // REVERT /api/extract-pdf-gpt
 app.post('/api/extract-pdf-gpt', upload.single('file'), async (req, res) => {
+  // **** ADD DIAGNOSTIC LOG ****
+  console.log('[DIAGNOSTIC LOG] Reached POST /api/extract-pdf-gpt handler!');
+  // **** END DIAGNOSTIC LOG ****
   try {
     console.log('[extract-pdf-gpt] GPT-only PDF extraction requested');
     const file = req.file;
