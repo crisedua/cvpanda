@@ -1,0 +1,3 @@
+@echo off
+echo Starting Python PDF Extraction Service...
+python pdf_extract.py 

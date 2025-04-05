@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles - Fix visibility issues */
+input, textarea, select {
+  background-color: white !important;
+  color: #333 !important;
+}
+
+/* Fix for dark mode and theme issues */
+body, main, div {
+  background-color: inherit;
+  color: #333 !important;
+}
+
+.dark body,
+.dark main,
+.dark div {
+  background-color: inherit;
+  color: #f8f8f8 !important;
+}
+
+/* Ensure text is visible in all containers */
+p, h1, h2, h3, h4, h5, h6, span, button, a {
+  color: inherit;
+}
+
+/* Force light mode for specific components */
+.bg-white {
+  background-color: white !important;
+}
+
+.text-gray-900 {
+  color: #111827 !important;
+}
+
+/* Fix for skill gap analyzer */
+[data-component="SkillGapAnalyzer"] {
+  color: #333 !important;
+  background-color: #f8f8f8 !important;
+}

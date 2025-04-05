@@ -1,0 +1,6 @@
+{
+  "error": "Extraction failed: 'LTChar' object is not iterable\nTraceback (most recent call last):\n  File \"C:\\Desarrollo_Cursor\\CVPANDA1\\server\\python\\extract_pdf.py\", line 119, in extract_from_pdf\n    process_element(element, elements, page_idx)\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Desarrollo_Cursor\\CVPANDA1\\server\\python\\extract_pdf.py\", line 238, in process_element\n    process_element(obj, elements, page_idx, depth + 1, element.x0, element.y1)\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Desarrollo_Cursor\\CVPANDA1\\server\\python\\extract_pdf.py\", line 195, in process_element\n    for char in obj:\n                ^^^\nTypeError: 'LTChar' object is not iterable\n",
+  "full_text": "",
+  "sections": {},
+  "structured_data": {}
+}

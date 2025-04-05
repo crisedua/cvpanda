@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+input, textarea, select {
+  background-color: white !important;
+  color: #333 !important;
+}

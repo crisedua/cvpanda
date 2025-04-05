@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #dff0d8; color: #3c763d; }
+        .error { background-color: #f2dede; color: #a94442; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    
+    <div>
+        <h2>Test Server Connection</h2>
+        <button id="testHealth">Test /api/health</button>
+        <button id="testAnalyzeSkillGaps">Test /api/analyze-skill-gaps</button>
+        <div id="healthResult" class="result"></div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://localhost:3001';
+
+        document.getElementById('testHealth').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = 'Testing connection...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/health`);
+                const data = await response.json();
+                resultDiv.innerHTML = `<h3>Success!</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.innerHTML = `<h3>Error</h3><p>${error.message}</p>`;
+                resultDiv.className = 'result error';
+                console.error('Connection error:', error);
+            }
+        });
+
+        document.getElementById('testAnalyzeSkillGaps').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = 'Testing skill gaps endpoint...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/analyze-skill-gaps`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cvId: 'test-cv-id',
+                        jobDescription: 'Sample job description'
+                    }),
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<h3>Skill Gaps API Success!</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    resultDiv.className = 'result success';
+                } else {
+                    const errorData = await response.json();
+                    resultDiv.innerHTML = `<h3>API responded with error</h3><pre>${JSON.stringify(errorData, null, 2)}</pre>`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<h3>Connection Error</h3><p>${error.message}</p>`;
+                resultDiv.className = 'result error';
+                console.error('API error:', error);
+            }
+        });
+    </script>
+</body>
+</html> 
