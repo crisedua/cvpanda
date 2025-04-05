@@ -6,10 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { extractPdfText, parseCvText } from '../lib/api';
 import { extractTextFromDOCX } from '../lib/documentParser';
-import type { CV } from '../types';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { saveParsedData } from '@/lib/supabaseUtils';
+import { saveParsedData } from '../lib/supabaseUtils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -76,7 +73,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
     setFileName(file.name);
     setProgress(0);
 
-    let filePath = '';
+    let filePath: string | null = null;
 
     try {
       if (file.size > MAX_FILE_SIZE) {
@@ -87,18 +84,23 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       const timestamp = new Date().getTime();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
       const supabaseFileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      filePath = `${userId}/${supabaseFileName}`;
+      const potentialFilePath = `${userId}/${supabaseFileName}`;
       try {
-        console.log(`Attempting upload: ${filePath}`);
+        console.log(`Attempting Supabase storage upload: ${potentialFilePath}`);
         const { error: uploadError } = await supabase.storage
           .from('cvs')
-          .upload(filePath, file, { cacheControl: '3600', upsert: false });
-        if (uploadError) throw uploadError;
-        console.log('Upload successful');
+          .upload(potentialFilePath, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) {
+          console.warn(`Supabase storage upload failed (continuing): ${uploadError.message}`);
+          filePath = null;
+        } else {
+          console.log('Supabase storage upload successful.');
+          filePath = potentialFilePath;
+        }
         setProgress(30);
-      } catch (uploadError: any) {
-        console.warn(`Supabase storage upload failed (continuing): ${uploadError.message}`);
-        filePath = '';
+      } catch (uploadCatchError: any) {
+        console.warn(`Error during Supabase storage upload attempt (continuing): ${uploadCatchError.message}`);
+        filePath = null;
         setProgress(30);
       }
 
@@ -109,10 +111,10 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
         console.log('Calling extractPdfText API...');
         apiResponse = await extractPdfText(file);
       } else if (fileExt === 'docx' || fileExt === 'doc') {
-        console.log('Extracting text from Word doc...');
+        console.log('Extracting text from Word doc locally...');
         const textContent = await extractTextFromDOCX(file);
         if (!textContent) throw new Error(t('cv.upload.error.wordExtract'));
-        console.log('Calling parseCvText API...');
+        console.log('Calling parseCvText API with extracted text...');
         apiResponse = await parseCvText(textContent);
       } else {
         throw new Error(t('cv.upload.error.unsupportedFormat', { format: fileExt }));
@@ -129,25 +131,25 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       }
       
       setParsedData(apiResponse.cvData);
-      console.log('CV successfully parsed.');
+      console.log('CV data successfully parsed by API.');
       setProgress(80);
 
       try {
-        console.log('Saving parsed data to database...');
+        console.log('Attempting to save parsed data via saveParsedData function...');
         await saveParsedData(userId, file.name, filePath, apiResponse.cvData);
-        console.log('Saved parsed data to database.');
+        console.log('saveParsedData function executed (check its internal logs for DB status).');
         setProgress(95);
         onUploadSuccess(apiResponse.cvData);
       } catch (dbError: any) {
-        console.error('Database save failed:', dbError);
-        setError(t('cv.upload.error.dbSaveError', { message: dbError.message || 'Unknown error' }));
+        console.error('Error occurred during saveParsedData execution:', dbError);
+        setError(t('cv.upload.error.dbSaveError', { message: dbError.message || 'Could not save data' }));
         onUploadSuccess(apiResponse.cvData);
       }
 
       setProgress(100);
 
     } catch (err: any) {
-      console.error('Error during CV processing:', err);
+      console.error('Error during overall CV processing pipeline:', err);
       setError(err.message || t('cv.upload.error.generic'));
       setParsedData(null);
       setProgress(0);
@@ -177,7 +179,8 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
     disabled: isLoading,
   });
 
-  const handleRemoveFile = () => {
+  const handleRemoveFile = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setFileName(null);
     setError(null);
     setParsedData(null);
@@ -193,7 +196,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
           ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
           ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'}
           ${isLoading ? 'cursor-not-allowed opacity-60' : ''}
-          ${parsedData ? 'border-green-500 bg-green-50' : ''}
+          ${parsedData && !isLoading && !error ? 'border-green-500 bg-green-50' : ''}
           `}
       >
         <input {...getInputProps()} disabled={isLoading} />
@@ -202,8 +205,10 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
           <div className="flex flex-col items-center">
             <Loader2 className="animate-spin h-8 w-8 text-blue-500 mb-4" />
             <p className="text-sm text-gray-600">{t('cv.upload.processing')}: {fileName || t('cv.upload.yourCv')}...</p>
-            <Progress value={progress} className="w-full mt-4 h-2" />
-            <p className="text-xs text-gray-500 mt-1">{progress}%</p>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-4 dark:bg-gray-700">
+               <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">({progress}%)</p>
           </div>
         ) : parsedData ? (
           <div className="flex items-center justify-center text-left relative text-green-700">
@@ -213,7 +218,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
                 <p className="text-sm break-all">{fileName}</p>
             </div>
             <button 
-                onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
+                onClick={handleRemoveFile}
                 className="absolute top-0 right-0 p-1 text-gray-400 hover:text-red-600 transition-colors"
                 aria-label={t('cv.upload.removeFile')}
             >
@@ -229,7 +234,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
                     <p className="text-sm text-gray-600 break-all">{fileName}</p>
                 </div>
                 <button
-                    onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
+                    onClick={handleRemoveFile}
                     className="absolute top-0 right-0 p-1 text-gray-400 hover:text-red-600 transition-colors"
                     aria-label={t('cv.upload.removeFile')}
                 >
@@ -248,12 +253,21 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
         )}
       </div>
 
-      {error && (
-        <Alert variant="destructive" className="mt-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{t('cv.upload.error.title')}</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {error && !isLoading && (
+        <div className="mt-4 p-4 bg-red-50 rounded-lg flex items-center border border-red-200">
+          <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
+          <div>
+              <p className="font-medium text-red-700">{t('cv.upload.error.title')}</p>
+              <p className="text-sm text-red-600">{error}</p>
+          </div>
+          <button
+                onClick={() => setError(null)}
+                className="ml-auto p-1 text-gray-400 hover:text-red-600 transition-colors"
+                aria-label={t('common.dismiss')}
+            >
+                <XCircle className="w-5 h-5" />
+           </button>
+        </div>
       )}
     </div>
   );
