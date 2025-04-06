@@ -601,27 +601,9 @@ export const extractPdfTextImproved = async (file: File) => {
       throw new Error(errorMessage);
     }
 
-    // --- ADD DETAILED LOGGING --- 
-    console.log('[Frontend API] Received response status:', response.status, response.statusText);
-    let data;
-    try {
-      data = await response.json();
-      console.log('[Frontend API] Parsed JSON data:', JSON.stringify(data, null, 2)); // Log the actual received data
-    } catch (jsonError) {
-      console.error('[Frontend API] Failed to parse response as JSON:', jsonError);
-      // Attempt to read as text if JSON parsing fails
-      try {
-         const textResponse = await response.text(); // response might be consumed, use clone if needed again
-         console.error('[Frontend API] Response body text (if JSON parse failed):', textResponse);
-      } catch (textError) {
-         console.error('[Frontend API] Could not read response as text either:', textError);
-      }
-      throw new Error('Failed to parse server response as JSON.'); // Throw specific error
-    }
-    // --- END DETAILED LOGGING --- 
-
+    const data = await response.json();
     if (!data || !data.success || !data.result) {
-      logger.error('Invalid server response format (Check console log above for actual data)', data);
+      logger.error('Invalid server response format', data);
       throw new Error('Server returned an invalid response format after PDF extraction.');
     }
 

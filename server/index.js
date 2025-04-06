@@ -286,10 +286,9 @@ app.post('/api/extract-pdf-gpt', upload.single('file'), async (req, res) => {
         success: true,
         // Ensure this structure matches what CVUpload expects now
         result: {
-            ...gptParsedData, 
+            gpt_data: gptParsedData,
             full_text: pdfText,
         }
-        // Removed jobs: jobs 
       };
       
       console.log('[API Response] Sending structured CV data ONLY.');
@@ -414,10 +413,9 @@ app.post('/api/extract-pdf-improved', upload.single('file'), async (req, res) =>
         success: true,
         // Ensure this structure matches what CVUpload expects now
         result: {
-            ...gptParsedData, 
+            gpt_data: gptParsedData,
             full_text: pdfText,
         }
-        // Removed jobs: jobs
       };
       
       console.log('[API Response] Sending structured CV data ONLY.');
@@ -521,8 +519,10 @@ app.post('/api/parse-text', async (req, res) => {
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        result: gptParsedData
-        // Removed jobs: jobs
+        result: {
+            gpt_data: gptParsedData,
+            full_text: cvText,
+        }
       };
 
       console.log('[API Response - Text] Sending structured CV data ONLY.');
