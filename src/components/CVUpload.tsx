@@ -60,6 +60,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
   const [parsedData, setParsedData] = useState<ParsedCVData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [databaseSaveError, setDatabaseSaveError] = useState<string | null>(null);
 
   const processFile = useCallback(async (file: File) => {
     if (!user) {
@@ -150,14 +151,32 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
 
       try {
         console.log('Attempting to save parsed data via saveParsedData function...');
-        await saveParsedData(userId, file.name, filePath, parsedData);
-        console.log('saveParsedData function executed (check its internal logs for DB status).');
+        try {
+          await saveParsedData(userId, file.name, filePath, parsedData);
+          console.log('✅ CV data successfully saved to database.');
+          setDatabaseSaveError(null); // Clear any previous errors
+        } catch (dbError: any) {
+          console.error('❌ DATABASE SAVE ERROR:', dbError);
+          // Show detailed diagnostics in console but don't stop the flow
+          console.warn('CV was successfully parsed but could not be saved to the database.');
+          console.warn('This is often due to Supabase configuration issues:');
+          console.warn('1. Check if the "parsed_cvs" or "cvs" table exists in your Supabase project');
+          console.warn('2. Verify Row Level Security (RLS) policies allow inserts');
+          console.warn('3. Check column names match the keys in dataToInsert object');
+          
+          // Set a user-friendly database error but don't block main flow
+          setDatabaseSaveError('Your CV was processed successfully, but couldn\'t be stored in your account database. '
+            + 'You can still work with it in this session. Error: ' + (dbError.message || 'Database connection issue'));
+        }
+        
+        // Continue with successful flow regardless of DB save outcome
         setProgress(95);
         onUploadSuccess(parsedData);
-      } catch (dbError: any) {
-        console.error('Error occurred during saveParsedData execution:', dbError);
-        setError(t('cv.upload.error.dbSaveError', { message: dbError.message || 'Could not save data' }));
-        onUploadSuccess(parsedData);
+      } catch (e: any) {
+        // This catch is just a safety net for completely unexpected errors
+        console.error('Unexpected error in database save process:', e);
+        setError(t('cv.upload.error.generic'));
+        onUploadSuccess(parsedData); // Still try to continue with the flow
       }
 
       setProgress(100);
@@ -266,6 +285,23 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
           )
         )}
       </div>
+
+      {databaseSaveError && !isLoading && !error && (
+        <div className="mt-4 p-4 bg-yellow-50 rounded-lg flex items-center border border-yellow-200">
+          <AlertCircle className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+          <div>
+              <p className="font-medium text-yellow-700">Storage Notice</p>
+              <p className="text-sm text-yellow-600">{databaseSaveError}</p>
+          </div>
+          <button
+                onClick={() => setDatabaseSaveError(null)}
+                className="ml-auto p-1 text-gray-400 hover:text-yellow-600 transition-colors"
+                aria-label={t('common.dismiss')}
+            >
+                <XCircle className="w-5 h-5" />
+           </button>
+        </div>
+      )}
 
       {error && !isLoading && (
         <div className="mt-4 p-4 bg-red-50 rounded-lg flex items-center border border-red-200">

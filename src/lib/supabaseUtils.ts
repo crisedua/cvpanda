@@ -109,18 +109,65 @@ export const saveParsedData = async (
   console.log('Data prepared for Supabase:', dataToInsert);
 
   // --- Actual Supabase Insert --- 
-  const { data, error } = await supabase
-    .from('parsed_cvs') // This should be your table name in Supabase
-    .insert([dataToInsert])
-    .select(); // Select the inserted data to confirm
-
-  if (error) {
-    console.error('Error saving parsed data to Supabase:', error);
-    // Consider more specific error handling or user feedback
-    throw new Error(`Failed to save CV data: ${error.message}`);
+  try {
+    // First, check if the table exists by trying to select a single row
+    const { data: tableCheck, error: tableError } = await supabase
+      .from('parsed_cvs')
+      .select('id')
+      .limit(1);
+    
+    if (tableError) {
+      console.error('Error verifying table exists:', tableError);
+      // The table might not exist, let's try both commonly used names
+      console.log('Attempting fallback to "cvs" table...');
+      
+      const { data: insertData, error: insertError } = await supabase
+        .from('cvs') // Try alternative table name
+        .insert([dataToInsert])
+        .select();
+        
+      if (insertError) {
+        console.error('Failed with both table names. Details:', insertError);
+        console.error('Most common issues:');
+        console.error('1. Table does not exist - check Supabase schema');
+        console.error('2. RLS policy blocking insert - check Authentication -> Policies');
+        console.error('3. Data type mismatch - check if JSON fields need to be stringified');
+        throw new Error(`Database error: ${insertError.message}`);
+      }
+      
+      console.log('Successfully saved to "cvs" table:', insertData);
+      return;
+    }
+    
+    // If table check passed, proceed with normal insert
+    console.log('Table "parsed_cvs" exists, proceeding with insert...');
+    const { data: insertData, error: insertError } = await supabase
+      .from('parsed_cvs')
+      .insert([dataToInsert])
+      .select();
+      
+    if (insertError) {
+      // More detailed error logging
+      console.error('Insert failed. Full error:', insertError);
+      console.error('Error code:', insertError.code);
+      console.error('Error details:', insertError.details);
+      console.error('Hint:', insertError.hint);
+      
+      // Try to determine if it's an RLS issue
+      if (insertError.message.includes('permission denied') || 
+          insertError.code === '42501' || 
+          insertError.message.includes('policy')) {
+        console.error('THIS APPEARS TO BE AN RLS POLICY ISSUE!');
+        console.error('Go to your Supabase dashboard -> Authentication -> Policies');
+        console.error('Ensure you have an INSERT policy for the parsed_cvs table');
+      }
+      
+      throw new Error(`Failed to save CV data: ${insertError.message}`);
+    }
+    
+    console.log('Successfully saved parsed data to Supabase:', insertData);
+  } catch (err) {
+    console.error('Unexpected error during save operation:', err);
+    throw err;
   }
-
-  console.log('Successfully saved parsed data to Supabase:', data);
-
-  // Removed placeholder timeout since we're doing the real operation now
 }; 
