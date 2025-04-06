@@ -105,4 +105,22 @@ export const saveParsedData = async (
   // Simulate async operation for placeholder
   await new Promise(resolve => setTimeout(resolve, 50)); 
   console.log('Placeholder: saveParsedData executed (no actual DB write performed yet).');
+
+  console.log('Data prepared for Supabase:', dataToInsert);
+
+  // --- Actual Supabase Insert --- 
+  const { data, error } = await supabase
+    .from('parsed_cvs') // This should be your table name in Supabase
+    .insert([dataToInsert])
+    .select(); // Select the inserted data to confirm
+
+  if (error) {
+    console.error('Error saving parsed data to Supabase:', error);
+    // Consider more specific error handling or user feedback
+    throw new Error(`Failed to save CV data: ${error.message}`);
+  }
+
+  console.log('Successfully saved parsed data to Supabase:', data);
+
+  // Removed placeholder timeout since we're doing the real operation now
 }; 
