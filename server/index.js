@@ -285,7 +285,7 @@ app.post('/api/extract-pdf-gpt', upload.single('file'), async (req, res) => {
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        cvData: {
+        result: {
             ...gptParsedData, 
             full_text: pdfText,
         }
@@ -413,7 +413,7 @@ app.post('/api/extract-pdf-improved', upload.single('file'), async (req, res) =>
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        cvData: {
+        result: {
             ...gptParsedData, 
             full_text: pdfText,
         }
@@ -521,7 +521,7 @@ app.post('/api/parse-text', async (req, res) => {
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        cvData: gptParsedData
+        result: gptParsedData
         // Removed jobs: jobs
       };
 
