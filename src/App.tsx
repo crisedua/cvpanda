@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Auth from './components/Auth';
 import Home from './components/Home';
@@ -27,9 +27,10 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
   return <>{children}</>;
 };
 
-function App() {
+function AppContent() {
   const { i18n } = useTranslation();
   const [isLoading, setIsLoading] = React.useState(true);
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     // Clear any stale cache
@@ -57,6 +58,13 @@ function App() {
 
     init();
   }, [i18n]);
+
+  // Handler for successful CV upload
+  const handleCvUploadSuccess = (data: any) => {
+    console.log('CV Upload Successful in App:', data);
+    // Navigate to the edit page after successful upload
+    navigate('/edit'); 
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -91,7 +99,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <React.Suspense fallback={<LoadingScreen />}>
-                    <CVUpload />
+                    <CVUpload onUploadSuccess={handleCvUploadSuccess} />
                   </React.Suspense>
                 </ProtectedRoute>
               }
@@ -183,4 +191,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppContent;
