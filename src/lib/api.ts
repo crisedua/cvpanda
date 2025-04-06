@@ -873,7 +873,11 @@ export const extractPdfText = async (file: File) => {
     }
 
     logger.log('Successfully extracted data from PDF');
-    return data.result; // Return the content inside 'result'
+    // Transform to format expected by CVUpload component
+    return {
+      success: true,
+      cvData: data.result.gpt_data || data.result
+    };
 
   } catch (error) {
     logger.error('Error extracting PDF text', error);
@@ -924,7 +928,7 @@ export const parseCvText = async (text: string) => {
     });
     
     // Return the same structure as extractPdfText for consistency
-    return data.result; 
+    return data.result;
   } catch (error) {
     logger.error('Error calling text parsing endpoint', error);
     throw error instanceof Error ? error : new Error('An unknown error occurred');

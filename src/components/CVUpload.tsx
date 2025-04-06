@@ -42,9 +42,10 @@ interface ParsedCVData {
 }
 
 interface ApiExtractionResponse {
-  success: boolean;
-  cvData: ParsedCVData | null;
+  success?: boolean;
+  cvData?: ParsedCVData | null;
   error?: string;
+  [key: string]: any; // Allow for additional properties from API
 }
 
 interface CVUploadProps {
@@ -124,26 +125,39 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       if (!apiResponse) {
         throw new Error(t('cv.upload.error.noApiResponse'));
       }
-      console.log('API Response received.');
+      console.log('API Response received, checking format:', apiResponse);
 
-      if (!apiResponse.success || !apiResponse.cvData) {
+      // Handle response from API which may be in different formats
+      let parsedData;
+      
+      // New format: {success: true, cvData: {...}}
+      if (apiResponse.success && apiResponse.cvData) {
+        parsedData = apiResponse.cvData;
+      } 
+      // Direct data format
+      else if (apiResponse.gpt_data || apiResponse.structured_data) {
+        parsedData = apiResponse;
+      }
+      // Invalid format
+      else {
+        console.error('Invalid API response format:', apiResponse);
         throw new Error(apiResponse.error || t('cv.upload.error.apiError'));
       }
       
-      setParsedData(apiResponse.cvData);
+      setParsedData(parsedData);
       console.log('CV data successfully parsed by API.');
       setProgress(80);
 
       try {
         console.log('Attempting to save parsed data via saveParsedData function...');
-        await saveParsedData(userId, file.name, filePath, apiResponse.cvData);
+        await saveParsedData(userId, file.name, filePath, parsedData);
         console.log('saveParsedData function executed (check its internal logs for DB status).');
         setProgress(95);
-        onUploadSuccess(apiResponse.cvData);
+        onUploadSuccess(parsedData);
       } catch (dbError: any) {
         console.error('Error occurred during saveParsedData execution:', dbError);
         setError(t('cv.upload.error.dbSaveError', { message: dbError.message || 'Could not save data' }));
-        onUploadSuccess(apiResponse.cvData);
+        onUploadSuccess(parsedData);
       }
 
       setProgress(100);
