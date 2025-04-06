@@ -49,6 +49,13 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 
+// *** ADD SIMPLE PING TEST ROUTE ***
+app.get('/api/ping', (req, res) => {
+  console.log('[DIAGNOSTIC LOG] Reached GET /api/ping');
+  res.status(200).json({ message: 'pong', timestamp: new Date().toISOString() });
+});
+// *** END PING TEST ROUTE ***
+
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
