@@ -30,7 +30,6 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
 function AppContent() {
   const { i18n } = useTranslation();
   const [isLoading, setIsLoading] = React.useState(true);
-  const navigate = useNavigate();
 
   React.useEffect(() => {
     // Clear any stale cache
@@ -59,13 +58,6 @@ function AppContent() {
     init();
   }, [i18n]);
 
-  // Handler for successful CV upload
-  const handleCvUploadSuccess = (data: any) => {
-    console.log('CV Upload Successful in App:', data);
-    // Navigate to the edit page after successful upload
-    navigate('/edit'); 
-  };
-
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -74,121 +66,136 @@ function AppContent() {
     <AuthProvider>
       <BrowserRouter>
         <Layout>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route 
-              path="/" 
-              element={
-                <React.Suspense fallback={<LoadingScreen />}>
-                  <Home />
-                </React.Suspense>
-              } 
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <UserProfile />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/import"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <CVUpload onUploadSuccess={handleCvUploadSuccess} />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/edit"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <CVEdit />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/improve"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <CVImprovement />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/jobs"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <JobApplication />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/development"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <ProfessionalDevelopment />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skillgap"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <SkillGapAnalyzer />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile-optimizer"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <ProfileOptimizer />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile-enhancer"
-              element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <ProfileEnhancer />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute adminOnly>
-                  <React.Suspense fallback={<LoadingScreen />}>
-                    <AdminDashboard />
-                  </React.Suspense>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          <AppRoutes />
         </Layout>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
+const AppRoutes = () => {
+  const navigate = useNavigate();
+  
+  // Handler for successful CV upload
+  const handleCvUploadSuccess = (data: any) => {
+    console.log('CV Upload Successful in App:', data);
+    // Navigate to the edit page after successful upload
+    navigate('/edit'); 
+  };
+  
+  return (
+    <Routes>
+      <Route path="/auth" element={<Auth />} />
+      <Route 
+        path="/" 
+        element={
+          <React.Suspense fallback={<LoadingScreen />}>
+            <Home />
+          </React.Suspense>
+        } 
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <UserProfile />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <CVUpload onUploadSuccess={handleCvUploadSuccess} />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/edit"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <CVEdit />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/improve"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <CVImprovement />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <JobApplication />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/development"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <ProfessionalDevelopment />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/skillgap"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <SkillGapAnalyzer />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile-optimizer"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <ProfileOptimizer />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile-enhancer"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <ProfileEnhancer />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute adminOnly>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <AdminDashboard />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+};
 
 export default AppContent;
