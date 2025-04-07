@@ -22,21 +22,41 @@ export const fetchUserCVs = async (userId: string) => {
     let allCVs: any[] = [];
     
     // Step 1: Fetch from Supabase parsed_cvs table
-    console.log('Fetching CVs from Supabase database...');
+    console.log('🔍 Fetching CVs from Supabase database...');
+    console.log('🔑 Using user ID:', userId);
     try {
-      const { data: supabaseCVs, error: supabaseError } = await supabase
+      // First, check if the table exists by getting its schema
+      const { data: tableInfo, error: tableError } = await supabase
         .from('parsed_cvs')
         .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .limit(1);
+      
+      console.log('🔍 Table check result:', tableInfo ? 'Table exists' : 'Table not found', tableError ? `Error: ${tableError.message}` : '');
+      
+      // Try both user_id and userId formats
+      console.log('🔍 Attempting query with user_id field...');
+      const { data: supabaseCVs, error: supabaseError } = await supabase
+        .from('parsed_cvs')
+        .select('*');
+
+      console.log('🔍 All records in table:', supabaseCVs ? supabaseCVs.length : 0);
+      
+      // Now filter by user_id
+      const { data: userCVs, error: userError } = await supabase
+        .from('parsed_cvs')
+        .select('*')
+        .eq('user_id', userId);
+        
+      console.log('🔍 Records matching user_id:', userId, ':', userCVs ? userCVs.length : 0);
+      console.log('🔍 Raw records:', userCVs);
         
       if (supabaseError) {
-        console.error('Error fetching from Supabase:', supabaseError);
-      } else if (supabaseCVs && supabaseCVs.length > 0) {
-        console.log('Successfully fetched CVs from Supabase, count:', supabaseCVs.length);
+        console.error('❌ Error fetching from Supabase:', supabaseError);
+      } else if (userCVs && userCVs.length > 0) {
+        console.log('✅ Successfully fetched CVs from Supabase, count:', userCVs.length);
         
         // Map Supabase data to the expected format
-        const formattedSupabaseCVs = supabaseCVs.map((cv: any) => ({
+        const formattedSupabaseCVs = userCVs.map((cv: any) => ({
           id: cv.id,
           userId: cv.user_id,
           filename: cv.file_name || 'Unnamed CV',
