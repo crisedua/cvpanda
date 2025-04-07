@@ -296,17 +296,20 @@ app.post('/api/extract-pdf-gpt', upload.single('file'), async (req, res) => {
       EXTRACT ALL WORK EXPERIENCES - even if there are more than 6. Do not truncate or summarize the list.`;
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt + "\n\nProvide your response as a valid JSON object, with no additional text before or after the JSON. DO NOT use markdown code blocks." },
           { role: "user", content: pdfText }
         ],
         temperature: 0.2,
+        max_tokens: 2000,
       });
 
       const gptResultContent = gptResponse.choices[0]?.message?.content;
-      console.log('[extract-pdf-gpt] Raw response content from GPT-4o-mini:', gptResultContent);
-
+      console.log('[extract-pdf-gpt] Response sample (first 200 chars):', 
+                  gptResultContent ? gptResultContent.substring(0, 200) + '...' : 'Empty content');
+      console.log('[extract-pdf-gpt] Total response length:', gptResultContent ? gptResultContent.length : 0);
+      
       if (!gptResultContent) {
         console.error('[extract-pdf-gpt] GPT returned empty content.');
         throw new Error('GPT returned empty content.');
@@ -338,13 +341,13 @@ app.post('/api/extract-pdf-gpt', upload.single('file'), async (req, res) => {
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        result: {
+        cvData: {
             gpt_data: gptParsedData,
             full_text: pdfText,
         }
       };
       
-      console.log('[API Response] Sending structured CV data ONLY.');
+      console.log('[API Response] Sending structured CV data with cvData key.');
       res.json(finalResponse);
 
     } catch (gptError) {
@@ -424,12 +427,13 @@ app.post('/api/extract-pdf-improved', upload.single('file'), async (req, res) =>
       EXTRACT ALL WORK EXPERIENCES - even if there are more than 6. Do not truncate or summarize the list.`;
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt + "\n\nProvide your response as a valid JSON object, with no additional text before or after the JSON. DO NOT use markdown code blocks." },
           { role: "user", content: pdfText }
         ],
         temperature: 0.2,
+        max_tokens: 2000,
       });
 
       const gptResultContent = gptResponse.choices[0]?.message?.content;
@@ -465,13 +469,13 @@ app.post('/api/extract-pdf-improved', upload.single('file'), async (req, res) =>
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        result: {
+        cvData: {
             gpt_data: gptParsedData,
             full_text: pdfText,
         }
       };
       
-      console.log('[API Response] Sending structured CV data ONLY.');
+      console.log('[API Response] Sending structured CV data with cvData key.');
       res.json(finalResponse);
     } catch (gptError) {
       console.error('[extract-pdf-improved] Error during GPT parsing:', gptError);
@@ -536,17 +540,20 @@ app.post('/api/parse-text', async (req, res) => {
       EXTRACT ALL WORK EXPERIENCES - even if there are more than 6. Do not truncate or summarize the list.`;
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt + "\n\nProvide your response as a valid JSON object, with no additional text before or after the JSON. DO NOT use markdown code blocks." },
           { role: "user", content: cvText } 
         ],
         temperature: 0.2,
+        max_tokens: 2000,
       });
 
       const gptResultContent = gptResponse.choices[0]?.message?.content;
-      console.log('[parse-text] Raw response content from GPT-4o-mini:', gptResultContent);
-
+      console.log('[parse-text] Response sample (first 200 chars):', 
+                 gptResultContent ? gptResultContent.substring(0, 200) + '...' : 'Empty content');
+      console.log('[parse-text] Total response length:', gptResultContent ? gptResultContent.length : 0);
+      
       if (!gptResultContent) {
         console.error('[parse-text] GPT returned empty content.');
         throw new Error('GPT returned empty content.');
