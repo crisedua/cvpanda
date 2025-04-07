@@ -12,8 +12,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { createComponentLogger } from '../lib/logger';
 import ParsedCV from './ParsedCV';
-import type { CV } from '../types';
-import { getCV, getRawCV, fetchUserCVs } from '../lib/api';
+import type { CV, ParsedCVData } from '../types';
+import { getRawCV, fetchUserCVs, deleteCV, toggleFavorite } from '../lib/api';
 
 const logger = createComponentLogger('CVEdit');
 
@@ -27,10 +27,10 @@ const CVEdit = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editedData, setEditedData] = useState<any>(null);
+  const [editedData, setEditedData] = useState<ParsedCVData | null>(null);
   const [saving, setSaving] = useState(false);
   const [viewLanguage, setViewLanguage] = useState<'original' | 'english'>('original');
-  const [editHistory, setEditHistory] = useState<any[]>([]);
+  const [editHistory, setEditHistory] = useState<ParsedCVData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreview, setShowPreview] = useState(true);
@@ -43,47 +43,6 @@ const CVEdit = () => {
       fetchCVs();
     }
   }, [user]);
-
-  useEffect(() => {
-    const fetchCV = async () => {
-      if (!selectedCVId) return;
-      
-      setLoading(true);
-      try {
-        logger.log(`Fetching CV: ${selectedCVId}`);
-        
-        // Attempt to get raw CV data first for large CVs
-        let rawData = null;
-        try {
-          rawData = await getRawCV(selectedCVId);
-          logger.log('Successfully fetched raw CV data');
-        } catch (rawError) {
-          logger.warn('Failed to fetch raw CV data, falling back to regular endpoint', rawError);
-        }
-        
-        const cv = await getCV(selectedCVId);
-        logger.log('Successfully fetched CV');
-        
-        // If we have raw data, store it
-        if (rawData && rawData.rawContent) {
-          setRawData(rawData);
-        }
-        
-        setSelectedCV(cv);
-        setLoading(false);
-      } catch (error) {
-        logger.error('Error fetching CV:', error);
-        setError('Failed to load CV');
-        setLoading(false);
-      }
-    };
-
-    if (selectedCVId) {
-      fetchCV();
-    } else {
-      setSelectedCV(null);
-    }
-  }, [selectedCVId]);
 
   const fetchCVs = async () => {
     if (!user) return;
@@ -155,30 +114,31 @@ const CVEdit = () => {
     if (!confirm(t('cv.confirmDelete'))) return;
 
     try {
-      logger.log('Deleting CV', { cvId: cv.id });
+      logger.log('[CVEdit] Attempting delete via API', { cvId: cv.id });
       setLoading(true);
+      setError(null);
+      setSuccess(null);
 
-      const { error: storageError } = await supabase.storage
-        .from('cvs')
-        .remove([cv.file_path]);
+      const result = await deleteCV(cv.id);
 
-      if (storageError) throw storageError;
+      if (result.success) {
+        logger.log('[CVEdit] CV deleted successfully via API');
+        setCvs(prevCvs => prevCvs.filter(c => c.id !== cv.id));
+        setSelectedCVId(null);
+        setSelectedCV(null);
+        setEditMode(false);
+        setEditedData(null);
+        setEditHistory([]);
+        setHistoryIndex(-1);
+        setSuccess(t('cv.success.deleted'));
+      } else {
+        logger.error('[CVEdit] API reported delete failure', { cvId: cv.id, message: result.message });
+        throw new Error(result.message || t('cv.errors.deleteFailed'));
+      }
 
-      const { error: dbError } = await supabase
-        .from('cvs')
-        .delete()
-        .eq('id', cv.id);
-
-      if (dbError) throw dbError;
-
-      logger.log('CV deleted successfully');
-      setCvs(prevCvs => prevCvs.filter(c => c.id !== cv.id));
-      setSelectedCV(null);
-      setEditMode(false);
-      setSuccess(t('cv.success.deleted'));
-    } catch (err) {
-      logger.error('Error deleting CV', err);
-      setError(t('cv.errors.deleteFailed'));
+    } catch (err: any) {
+      logger.error('[CVEdit] Error during delete process', { cvId: cv.id, error: err });
+      setError(err.message || t('cv.errors.deleteFailed'));
     } finally {
       setLoading(false);
     }
@@ -189,67 +149,58 @@ const CVEdit = () => {
       logger.log('Selecting CV', { cvId: cv.id });
       setLoading(true);
       setError(null);
+      setSuccess(null);
       
-      // Set the CV immediately for UX
       setSelectedCV(cv);
+      setSelectedCVId(cv.id);
       setEditMode(false);
       setEditedData(null);
+      setEditHistory([]);
+      setHistoryIndex(-1);
+      setViewMode('structured');
       
-      // Check if we already have sufficient data to display
-      const hasBasicData = cv.content || (cv.parsedData && Object.keys(cv.parsedData).length > 0);
+      const hasParsedData = cv.parsed_data && Object.keys(cv.parsed_data).length > 0;
       
-      // If we already have essential data from the list view, skip extra API calls
-      if (hasBasicData) {
-        logger.log('Using existing CV data for display', { cvId: cv.id, hasContent: !!cv.content });
+      if (hasParsedData) {
+        logger.log('Using existing parsed_data for display', { cvId: cv.id });
         setLoading(false);
         return;
       }
       
-      // If we don't have content, fetch it with just ONE API call - the most important one
-      logger.log('Fetching CV data', { cvId: cv.id });
-      
+      logger.log('Parsed data missing, fetching raw content', { cvId: cv.id });
       try {
-        // Use a timeout to prevent hanging
-        const timeout = 8000; // 8 seconds timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-        
-        const detailedData = await getCV(cv.id, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (detailedData) {
-          logger.log('Received detailed CV data', { cvId: cv.id });
-          
-          // Merge the data with our selected CV
-          setSelectedCV({
-            ...cv,
-            content: detailedData.text_content || detailedData.content || cv.content,
-            parsedData: detailedData.parsed_data || cv.parsedData,
-            // Other fields
-          });
+        const rawData = await getRawCV(cv.id);
+        if (rawData && rawData.raw_content) {
+           logger.log('Received raw content', { cvId: cv.id });
+           setSelectedCV(prev => prev ? { ...prev, content: rawData.raw_content } : null);
+           setRawData(rawData);
+        } else {
+          logger.warn('No raw content found in fetched data', { cvId: cv.id });
         }
-      } catch (err) {
-        // Just log the error but don't show to user since we already displayed the CV
-        logger.warn('Error fetching additional CV details', err);
-        // Continue showing what we have
-      } finally {
-        setLoading(false);
+      } catch (rawFetchError) {
+         logger.warn('Failed to fetch raw content', { cvId: cv.id, error: rawFetchError });
       }
+
     } catch (err) {
-      logger.error('Error selecting CV', err);
-      setError('Failed to load CV details');
+      logger.error('Error selecting CV', { cvId: cv?.id, error: err });
+      setError(t('cv.errors.loadFailed'));
+    } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = (cv: CV) => {
-    const data = viewLanguage === 'english' ? cv.parsed_data_english : cv.parsed_data;
-    if (!data) {
+    const dataToEdit = viewLanguage === 'english' 
+      ? (cv.parsed_data_english ?? cv.parsed_data)
+      : cv.parsed_data;
+      
+    if (!dataToEdit) {
+      logger.warn('No parsed data available to edit for the selected language', { cvId: cv.id, lang: viewLanguage });
       setError(t('cv.errors.noData'));
       return;
     }
     
-    const initialData = JSON.parse(JSON.stringify(data));
+    const initialData = JSON.parse(JSON.stringify(dataToEdit));
     setEditedData(initialData);
     setEditHistory([initialData]);
     setHistoryIndex(0);
@@ -325,21 +276,23 @@ const CVEdit = () => {
   };
 
   const updateField = (path: string[], value: any) => {
-    setEditedData(prevData => {
-      const newData = { ...prevData };
-      let current = newData;
+    setEditedData((prevData: ParsedCVData | null) => {
+      if (!prevData) return null;
+      const newData = { ...prevData }; 
+      let current: any = newData;
       
       for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) {
-          current[path[i]] = {};
+        const key = path[i];
+        if (!current[key] || typeof current[key] !== 'object') {
+          current[key] = {}; 
         }
-        current = current[path[i]];
+        current = current[key];
       }
       
       current[path[path.length - 1]] = value;
 
       const newHistory = editHistory.slice(0, historyIndex + 1);
-      newHistory.push(JSON.parse(JSON.stringify(newData)));
+      newHistory.push(JSON.parse(JSON.stringify(newData))); 
       setEditHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
 
@@ -348,74 +301,109 @@ const CVEdit = () => {
   };
 
   const addArrayItem = (path: string[], template: any) => {
-    setEditedData(prevData => {
-      const newData = { ...prevData };
-      let current = newData;
-      
-      for (let i = 0; i < path.length; i++) {
-        if (!current[path[i]]) {
-          current[path[i]] = i === path.length - 1 ? [] : {};
-        }
-        if (i === path.length - 1) {
-          current[path[i]] = [...current[path[i]], template];
-        } else {
-          current = current[path[i]];
-        }
-      }
+    setEditedData((prevData: ParsedCVData | null) => { 
+        if (!prevData) return null;
+        const newData = JSON.parse(JSON.stringify(prevData)); 
+        let current: any = newData;
 
-      const newHistory = editHistory.slice(0, historyIndex + 1);
-      newHistory.push(JSON.parse(JSON.stringify(newData)));
-      setEditHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-      
-      return newData;
+        for (let i = 0; i < path.length; i++) {
+            if (!current[path[i]]) {
+                if (i === path.length - 1) {
+                  current[path[i]] = [];
+                } else {
+                  return prevData; 
+                }
+            }
+            current = current[path[i]];
+        }
+
+        if (!Array.isArray(current)) {
+            console.error('Target path for addArrayItem is not an array:', path.join('.'));
+            return prevData; 
+        }
+
+        current.push(JSON.parse(JSON.stringify(template))); 
+
+        const newHistory = editHistory.slice(0, historyIndex + 1);
+        newHistory.push(JSON.parse(JSON.stringify(newData)));
+        setEditHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+
+        return newData;
     });
   };
 
   const removeArrayItem = (path: string[], index: number) => {
-    setEditedData(prevData => {
-      const newData = { ...prevData };
-      let current = newData;
-      
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) break;
-        current = current[path[i]];
-      }
-      
-      if (Array.isArray(current[path[path.length - 1]])) {
-        current[path[path.length - 1]] = current[path[path.length - 1]].filter((_: any, i: number) => i !== index);
-      }
+      setEditedData((prevData: ParsedCVData | null) => { 
+          if (!prevData) return null;
+          const newData = JSON.parse(JSON.stringify(prevData)); 
+          let current: any = newData;
 
-      const newHistory = editHistory.slice(0, historyIndex + 1);
-      newHistory.push(JSON.parse(JSON.stringify(newData)));
-      setEditHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-      
-      return newData;
-    });
+          for (let i = 0; i < path.length; i++) {
+              if (!current[path[i]]) {
+                  return prevData;
+              }
+              current = current[path[i]];
+          }
+
+          if (!Array.isArray(current)) {
+              console.error('Target path for removeArrayItem is not an array:', path.join('.'));
+              return prevData;
+          }
+
+          if (index < 0 || index >= current.length) {
+              console.error('Invalid index for removeArrayItem:', index);
+              return prevData;
+          }
+
+          current.splice(index, 1); 
+
+          const newHistory = editHistory.slice(0, historyIndex + 1);
+          newHistory.push(JSON.parse(JSON.stringify(newData)));
+          setEditHistory(newHistory);
+          setHistoryIndex(newHistory.length - 1);
+
+          return newData;
+      });
   };
 
   const updateArrayItem = (path: string[], index: number, field: string, value: any) => {
-    setEditedData(prevData => {
-      const newData = { ...prevData };
-      let current = newData;
-      
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) break;
-        current = current[path[i]];
-      }
-      
-      if (Array.isArray(current[path[path.length - 1]])) {
-        current[path[path.length - 1]][index][field] = value;
-      }
+      setEditedData((prevData: ParsedCVData | null) => { 
+          if (!prevData) return null;
+          const newData = JSON.parse(JSON.stringify(prevData)); 
+          let current: any = newData;
 
-      const newHistory = editHistory.slice(0, historyIndex + 1);
-      newHistory.push(JSON.parse(JSON.stringify(newData)));
-      setEditHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-      
-      return newData;
-    });
+          for (let i = 0; i < path.length; i++) {
+              if (!current[path[i]]) {
+                  return prevData;
+              }
+              current = current[path[i]];
+          }
+
+          if (!Array.isArray(current)) {
+              console.error('Target path for updateArrayItem is not an array:', path.join('.'));
+              return prevData;
+          }
+
+          if (index < 0 || index >= current.length) {
+              console.error('Invalid index for updateArrayItem:', index);
+              return prevData;
+          }
+          
+          if (!current[index]) {
+              console.error('Array item at index does not exist:', index);
+              return prevData;
+          }
+
+          current[index][field] = value; 
+
+          const newHistory = editHistory.slice(0, historyIndex + 1);
+          newHistory.push(JSON.parse(JSON.stringify(newData)));
+          setEditHistory(newHistory);
+          setHistoryIndex(newHistory.length - 1);
+
+          return newData;
+      });
   };
 
   const handleUndo = () => {
@@ -438,7 +426,6 @@ const CVEdit = () => {
   );
 
   const openDebugInfo = (cvId: string) => {
-    // Open the backend debug endpoint directly
     window.open(`/api/cv-debug/${cvId}`, '_blank');
   };
 
@@ -822,3 +809,4 @@ const CVEdit = () => {
 };
 
 export default CVEdit;
+
