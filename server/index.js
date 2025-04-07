@@ -509,44 +509,20 @@ app.post('/api/parse-text', async (req, res) => {
 
     console.log(`[parse-text] Received ${cvText.length} characters. Sending to GPT-4o-mini for parsing...`);
     try {
-      // Reuse the same system prompt from the PDF endpoint
-      const systemPrompt = `You are an expert CV parser. Analyze the provided CV text and extract the following information in JSON format. Ensure the output is ONLY the JSON object, with no introductory text or explanations. 
-      
-      IMPORTANT: Do NOT format your response as a markdown code block. Do NOT use \`\`\`json or any markdown formatting. Return ONLY the raw JSON object.
-      
-      For job experiences: Please extract ALL job experiences from the CV. Start from the 'Experience' section and continue until the 'Education' section begins. Identify job entries by detecting date ranges (such as 'January 2013 - Present' or similar patterns) and ensure that each occurrence is treated as a new job entry. 
-      
-      VERY IMPORTANT: For each work experience, check for "Key Achievements" or similar sections, and include these as a separate array field called "achievements" in the work experience object.
-      
-      The JSON object should have these keys:
-      - name (string): The full name of the candidate.
-      - email (string): The primary email address.
-      - phone (string): The primary phone number.
-      - linkedin_url (string): The URL to the LinkedIn profile, if present.
-      - github_url (string): The URL to the GitHub profile, if present.
-      - website_url (string): The URL to a personal website or portfolio, if present.
-      - location (string): The general location (e.g., City, Country).
-      - summary (string): The professional summary or objective section.
-      - skills (array of strings): A list of key skills mentioned.
-      - education (array of objects): Each object should have 'institution', 'degree', and 'dates'.
-      - work_experience (array of objects): Each object should have:
-        - company (string): Company name
-        - title (string): Job title
-        - dates (string): Employment period
-        - location (string): Job location if specified
-        - description (string): Main job description text
-        - achievements (array of strings): Key achievements for this position, if present
-      
-      EXTRACT ALL WORK EXPERIENCES - even if there are more than 6. Do not truncate or summarize the list.`;
+      // Enhanced system prompt for more precise extraction
+      const systemPrompt = `You are an expert CV parser. Analyze the provided CV text and extract the following information into a **single JSON object**. \n      \n      **Output Format Rules:**\n      1.  Your response MUST be **ONLY** the JSON object. \n      2.  Do **NOT** include any introductory text, explanations, apologies, or markdown formatting (like \\\`\\\`\\\`json).\n      3.  If a field is not found in the CV, use an empty string \"\" for string fields, an empty array [] for array fields, or null for optional object fields. DO NOT omit the key.\n      \n      **JSON Object Structure:**\n      {\n        \"name\": \"<Full Name>\",\n        \"email\": \"<Primary Email>\",\n        \"phone\": \"<Primary Phone Number>\",\n        \"linkedin_url\": \"<LinkedIn Profile URL or empty string>\",\n        \"github_url\": \"<GitHub Profile URL or empty string>\",\n        \"website_url\": \"<Personal Website URL or empty string>\",\n        \"location\": \"<General Location (e.g., City, Country)>\",\n        \"job_title\": \"<Current or Most Recent Job Title>\",\n        \"summary\": \"<Professional Summary/Objective section text>\",\n        \"skills\": [\n          \"<Skill 1>\", \n          \"<Skill 2>\", \n          \"...\"\n        ],\n        \"education\": [\n          {\n            \"institution\": \"<Institution Name>\",\n            \"degree\": \"<Degree/Field of Study>\",\n            \"dates\": \"<Dates Attended (e.g., YYYY-YYYY or Month YYYY - Month YYYY)>\"\n          },\n          \"...\"\n        ],\n        \"work_experience\": [\n          {\n            \"company\": \"<Company Name>\",\n            \"title\": \"<Job Title>\",\n            \"dates\": \"<Employment Period (e.g., Month YYYY - Present)>\",\n            \"location\": \"<Job Location or empty string>\",\n            \"description\": \"<Main job responsibilities text>\",\n            \"achievements\": [\n              \"<Key Achievement 1>\",\n              \"<Key Achievement 2>\",\n              \"...\"\n            ]\n          },\n          \"...\"\n        ]\n      }\n      \n      **Extraction Guidelines:**\n      -   **Work Experience:** Extract ALL distinct job roles listed under Experience/Work History sections. Identify roles by company name and date ranges. Include the full description and look specifically for bullet points or sections labeled \"Achievements\", \"Key Results\", etc. for the achievements array.\n      -   **Skills:** Consolidate all technical, soft, and other skills into a single flat array of strings.\n      -   **Contact Info:** Find the most prominent contact details.\n      -   **Summary:** Capture the introductory paragraph often labeled Summary or Objective.\n      -   **Education:** List all distinct educational entries with institution, degree/field, and dates.\n      `;
+
+      console.log(`[parse-text] Sending ${cvText.length} chars to ${modelToUse} with enhanced prompt...`);
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: modelToUse, // Use the determined model
         messages: [
-          { role: "system", content: systemPrompt + "\n\nProvide your response as a valid JSON object, with no additional text before or after the JSON. DO NOT use markdown code blocks." },
+          { role: "system", content: systemPrompt },
           { role: "user", content: cvText } 
         ],
-        temperature: 0.2,
-        max_tokens: 2000,
+        temperature: 0.1, // Lower temperature for more deterministic JSON output
+        max_tokens: 3000, // Increase slightly for potentially longer JSON
+        response_format: { type: "json_object" }, // Explicitly request JSON output if model supports it
       });
 
       const gptResultContent = gptResponse.choices[0]?.message?.content;

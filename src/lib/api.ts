@@ -309,77 +309,44 @@ export const processCV = async (cvId: string) => {
 // Delete a CV
 export const deleteCV = async (cvId: string) => {
   try {
-    logger.log('Deleting CV:', cvId);
+    logger.log('Attempting to delete CV via backend endpoint:', cvId);
     
-    // First try to delete the actual file from storage
-    try {
-      console.log('Finding file path for CV:', cvId);
-      const { data: filePathData, error: filePathError } = await supabase
-        .from('storage_file_paths')
-        .select('file_path')
-        .eq('cv_id', cvId)
-        .maybeSingle();
-      
-      if (filePathError) {
-        console.warn('Error getting file path:', filePathError);
-      } else if (filePathData && filePathData.file_path) {
-        console.log('Found file path:', filePathData.file_path);
-        
-        // Delete the file from storage
-        const { error: storageError } = await supabase.storage
-          .from('cvs')
-          .remove([filePathData.file_path]);
-          
-        if (storageError) {
-          console.warn('Error deleting file from storage:', storageError);
-        } else {
-          console.log('Successfully deleted file from storage');
-          
-          // Also delete the path entry
-          await supabase
-            .from('storage_file_paths')
-            .delete()
-            .eq('cv_id', cvId);
+    const response = await fetch(`${API_BASE_URL}/api/cvs/${cvId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to delete CV';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || `Server error ${response.status}`;
+        if (response.status === 404) {
+          errorMessage = 'CV not found on server.';
         }
-      } else {
-        console.log('No file path found for this CV');
+        console.error('Error deleting CV (server response):', errorData);
+      } catch (e) {
+        errorMessage = `Server error ${response.status} during delete.`;
+        console.error('Error deleting CV, non-JSON response:', await response.text());
       }
-    } catch (storageError) {
-      console.warn('Exception deleting file from storage:', storageError);
-      // Continue with database deletion even if storage cleanup fails
+      throw new Error(errorMessage);
     }
     
-    // Delete from parsed_cvs table - our single source of truth
-    console.log('Deleting CV from parsed_cvs table...');
-    const { data: deletedRecord, error: deleteError } = await supabase
-      .from('parsed_cvs')
-      .delete()
-      .eq('id', cvId)
-      .select()
-      .single();
+    // Assuming the backend returns { success: true, message: '...' } on success
+    const data = await response.json();
     
-    if (deleteError) {
-      if (deleteError.code === 'PGRST116') {
-        // Not found
-        console.warn('CV not found in parsed_cvs table');
-        return { success: false, message: 'CV not found' };
-      } else {
-        console.error('Error deleting CV from parsed_cvs:', deleteError);
-        throw deleteError;
-      }
-    }
-    
-    if (deletedRecord) {
-      console.log('Successfully deleted CV from parsed_cvs table');
-      return { success: true, message: 'CV deleted successfully' };
+    if (data.success) {
+        console.log('Successfully deleted CV via backend endpoint');
+        return { success: true, message: data.message || 'CV deleted successfully' };
     } else {
-      console.warn('No CV was deleted (not found)');
-      return { success: false, message: 'CV not found' };
+        console.warn('Backend reported delete failure:', data.message);
+        throw new Error(data.message || 'Backend failed to delete CV');
     }
-    
+
   } catch (error) {
-    logger.error('Error in deleteCV:', error);
-    throw error;
+    logger.error('Error in deleteCV function:', error);
+    // Return a standard error format if needed, or re-throw
+    // return { success: false, message: error instanceof Error ? error.message : 'Unknown error' }; 
+    throw error; // Re-throw to be caught by the component
   }
 };
 
