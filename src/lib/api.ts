@@ -581,14 +581,23 @@ export const getRawCV = async (cvId: string) => {
 export const extractPdfText = async (file: File, options: { signal?: AbortSignal } = {}): Promise<ApiExtractionResponse> => {
   const startTime = Date.now();
   try {
-    logger.log('Extracting text from PDF', { fileName: file.name, fileSize: file.size });
+    console.log('🔄 Extracting text from PDF', { fileName: file.name, fileSize: file.size });
     
-    // Add a fast timeout to abort if taking too long
-    const { signal } = options;
+    // Create a custom AbortController with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('⏱️ PDF extraction timeout triggered after 45 seconds');
+      controller.abort();
+    }, 45000); // 45 second timeout
+    
+    // Use either our timeout signal or the provided one
+    const signal = options.signal || controller.signal;
     
     // Create FormData for the file
     const formData = new FormData();
     formData.append('pdf', file);
+    
+    console.log(`📤 Sending PDF to ${API_BASE_URL}/api/extract-pdf...`);
     
     // Use fetch with timeout
     const response = await fetch(`${API_BASE_URL}/api/extract-pdf`, {
@@ -597,29 +606,35 @@ export const extractPdfText = async (file: File, options: { signal?: AbortSignal
       signal, // Pass abort signal
     });
     
+    // Clear our timeout if we set one
+    if (timeoutId) clearTimeout(timeoutId);
+    
     if (!response.ok) {
       // Attempt to get the error message
       let errorMessage;
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || `Server error: ${response.status}`;
-      } catch {
+        console.error('❌ Server returned error:', errorMessage);
+      } catch (e) {
         errorMessage = `HTTP error: ${response.status}`;
+        console.error('❌ Server error (non-JSON response):', response.status);
       }
       
       throw new Error(errorMessage);
     }
     
+    console.log('✅ Server response received, parsing JSON...');
     const data = await response.json();
     const duration = Date.now() - startTime;
     
     // Validate response here instead of relying on the frontend
     if (!data || !data.text) {
-      logger.error('Invalid response from PDF extraction:', data);
+      console.error('❌ Invalid response from PDF extraction:', data);
       throw new Error('Invalid response structure from PDF extraction API');
     }
     
-    logger.log('Successfully extracted text from PDF', { 
+    console.log('✅ Successfully extracted text from PDF', { 
       fileName: file.name, 
       textLength: data.text.length,
       duration: `${duration}ms`
@@ -639,15 +654,22 @@ export const extractPdfText = async (file: File, options: { signal?: AbortSignal
     const duration = Date.now() - startTime;
     
     if (error instanceof Error && error.name === 'AbortError') {
-      logger.error('PDF extraction timed out', { 
+      console.error('⏱️ PDF extraction timed out', { 
         fileName: file.name, 
         duration: `${duration}ms` 
       });
-      throw new Error('PDF extraction timed out. Please try a smaller file or a different format.');
+      return {
+        success: false,
+        error: 'PDF extraction timed out after 45 seconds. Please try a smaller file or a different format.'
+      };
     }
     
-    logger.error('Error extracting text from PDF', error);
-    throw error;
+    console.error('❌ Error extracting text from PDF:', error);
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error in PDF extraction'
+    };
   }
 };
 

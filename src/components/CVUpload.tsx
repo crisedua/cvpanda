@@ -74,6 +74,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
     setParsedData(null);
     setFileName(file.name);
     setProgress(0);
+    console.log("🔍 CV Processing start:", new Date().toISOString());
 
     let filePath: string | null = null;
 
@@ -81,6 +82,7 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       if (file.size > MAX_FILE_SIZE) {
         throw new Error(t('cv.upload.error.fileSize', { size: '10MB' }));
       }
+      console.log("📂 File validated:", file.name, file.size);
       setProgress(10);
 
       const timestamp = new Date().getTime();
@@ -88,71 +90,81 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       const supabaseFileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const potentialFilePath = `${userId}/${supabaseFileName}`;
       try {
-        console.log(`Attempting Supabase storage upload: ${potentialFilePath}`);
+        console.log(`⬆️ Attempting Supabase storage upload: ${potentialFilePath}`);
         const { error: uploadError } = await supabase.storage
           .from('cvs')
           .upload(potentialFilePath, file, { cacheControl: '3600', upsert: false });
         if (uploadError) {
-          console.warn(`Supabase storage upload failed (continuing): ${uploadError.message}`);
+          console.warn(`⚠️ Supabase storage upload failed (continuing): ${uploadError.message}`);
           filePath = null;
         } else {
-          console.log('Supabase storage upload successful.');
+          console.log('✅ Supabase storage upload successful.');
           filePath = potentialFilePath;
         }
         setProgress(30);
       } catch (uploadCatchError: any) {
-        console.warn(`Error during Supabase storage upload attempt (continuing): ${uploadCatchError.message}`);
+        console.warn(`⚠️ Error during Supabase storage upload attempt (continuing): ${uploadCatchError.message}`);
         filePath = null;
         setProgress(30);
       }
 
+      console.log(`📄 Starting text extraction (${fileExt.toUpperCase()} file)`);
       setProgress(40);
       let apiResponse: ApiExtractionResponse | null = null;
 
-      if (fileExt === 'pdf') {
-        console.log('Calling extractPdfText API...');
-        apiResponse = await extractPdfText(file);
-      } else if (fileExt === 'docx' || fileExt === 'doc') {
-        console.log('Extracting text from Word doc locally...');
-        const textContent = await extractTextFromDOCX(file);
-        if (!textContent) throw new Error(t('cv.upload.error.wordExtract'));
-        console.log('Calling parseCvText API with extracted text...');
-        apiResponse = await parseCvText(textContent);
-      } else {
-        throw new Error(t('cv.upload.error.unsupportedFormat', { format: fileExt }));
+      try {
+        if (fileExt === 'pdf') {
+          console.log('🔄 Calling extractPdfText API...');
+          apiResponse = await extractPdfText(file);
+          console.log('✅ extractPdfText API call completed');
+        } else if (fileExt === 'docx' || fileExt === 'doc') {
+          console.log('🔄 Extracting text from Word doc locally...');
+          const textContent = await extractTextFromDOCX(file);
+          if (!textContent) throw new Error(t('cv.upload.error.wordExtract'));
+          console.log('🔄 Calling parseCvText API with extracted text...');
+          apiResponse = await parseCvText(textContent);
+          console.log('✅ parseCvText API call completed');
+        } else {
+          throw new Error(t('cv.upload.error.unsupportedFormat', { format: fileExt }));
+        }
+      } catch (extractionError: any) {
+        console.error('❌ Text extraction failed:', extractionError);
+        throw new Error(`Text extraction error: ${extractionError.message || 'Unknown extraction error'}`);
       }
+      
+      console.log('✅ Text extraction complete');
       setProgress(70);
 
       if (!apiResponse) {
         throw new Error(t('cv.upload.error.noApiResponse'));
       }
-      console.log('API Response received, checking format:', apiResponse);
+      console.log('🔍 API Response received, checking format:', apiResponse);
 
       // Handle response from API which may be in different formats
       let parsedData;
       
       // Debug what we got
-      console.log('Debug - API Response structure:', 
+      console.log('🔍 Debug - API Response structure:', 
                   Object.keys(apiResponse).length ? Object.keys(apiResponse).join(', ') : 'empty');
       
       // New format: {success: true, cvData: {...}}
       if (apiResponse.success && apiResponse.cvData) {
-        console.log('Found expected format with cvData');
+        console.log('✅ Found expected format with cvData');
         parsedData = apiResponse.cvData;
       } 
       // Backend format not updated yet: {success: true, result: {...}}
       else if (apiResponse.success && apiResponse.result) {
-        console.log('Found backend format with result');
+        console.log('✅ Found backend format with result');
         parsedData = apiResponse.result; 
       }
       // Direct data format
       else if (apiResponse.gpt_data || apiResponse.structured_data) {
-        console.log('Found legacy format with gpt_data/structured_data');
+        console.log('✅ Found legacy format with gpt_data/structured_data');
         parsedData = apiResponse;
       }
       // Try to recover data even if structure is unexpected
       else if (apiResponse.success === true && typeof apiResponse === 'object') {
-        console.log('Attempting to recover data from unexpected structure');
+        console.log('⚠️ Attempting to recover data from unexpected structure');
         
         // Look for any property that might contain our data
         const possibleDataFields = Object.keys(apiResponse).filter(key => 
@@ -163,18 +175,18 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
         );
         
         if (possibleDataFields.length > 0) {
-          console.log('Found potential data fields:', possibleDataFields.join(', '));
+          console.log('✅ Found potential data fields:', possibleDataFields.join(', '));
           // Use the first object-type field we find
           parsedData = apiResponse[possibleDataFields[0]];
         } else {
           // Last resort - use the whole response
-          console.log('No data fields found, using entire response');
+          console.log('⚠️ No data fields found, using entire response');
           parsedData = apiResponse;
         }
       }
       // Invalid format
       else {
-        console.error('Invalid API response format:', apiResponse);
+        console.error('❌ Invalid API response format:', apiResponse);
         
         // If we got an error message from the API, display it
         if (apiResponse.error) {
@@ -191,11 +203,11 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       }
       
       setParsedData(parsedData);
-      console.log('CV data successfully parsed by API.');
+      console.log('✅ CV data successfully parsed by API.');
       setProgress(80);
 
       try {
-        console.log('Attempting to save parsed data via saveParsedData function...');
+        console.log('🔄 Attempting to save parsed data via saveParsedData function...');
         try {
           await saveParsedData(userId, file.name, filePath, parsedData);
           console.log('✅ CV data successfully saved to database.');
@@ -203,8 +215,8 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
         } catch (dbError: any) {
           console.error('❌ DATABASE SAVE ERROR:', dbError);
           // Show detailed diagnostics in console but don't stop the flow
-          console.warn('CV was successfully parsed but could not be saved to the database.');
-          console.warn('This is often due to Supabase configuration issues:');
+          console.warn('⚠️ CV was successfully parsed but could not be saved to the database.');
+          console.warn('⚠️ This is often due to Supabase configuration issues:');
           console.warn('1. Check if the "parsed_cvs" or "cvs" table exists in your Supabase project');
           console.warn('2. Verify Row Level Security (RLS) policies allow inserts');
           console.warn('3. Check column names match the keys in dataToInsert object');
@@ -219,15 +231,16 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
         onUploadSuccess(parsedData);
       } catch (e: any) {
         // This catch is just a safety net for completely unexpected errors
-        console.error('Unexpected error in database save process:', e);
+        console.error('❌ Unexpected error in database save process:', e);
         setError(t('cv.upload.error.generic'));
         onUploadSuccess(parsedData); // Still try to continue with the flow
       }
 
+      console.log("🎉 CV Processing complete:", new Date().toISOString());
       setProgress(100);
 
     } catch (err: any) {
-      console.error('Error during overall CV processing pipeline:', err);
+      console.error('❌ Error during overall CV processing pipeline:', err);
       setError(err.message || t('cv.upload.error.generic'));
       setParsedData(null);
       setProgress(0);
