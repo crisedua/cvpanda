@@ -946,7 +946,7 @@ app.get('/api/cvs', async (req, res) => {
     const { data, error } = await supabase
       .from('parsed_cvs')
       // Select file_name from DB, plus other necessary fields
-      .select('id, file_name, created_at, updated_at, is_favorite, parsed_data') 
+      .select('id, file_name, created_at, is_favorite, parsed_data') 
       .eq('user_id', userId)
       .order('is_favorite', { ascending: false })
       .order('created_at', { ascending: false });
@@ -963,7 +963,6 @@ app.get('/api/cvs', async (req, res) => {
         id: cv.id,
         filename: cv.file_name, // Map file_name to filename
         created_at: cv.created_at,
-        updated_at: cv.updated_at,
         is_favorite: cv.is_favorite,
         isFavorite: cv.is_favorite, // Include isFavorite for compatibility
         parsed_data: cv.parsed_data,
