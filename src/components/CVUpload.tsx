@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { extractPdfText, parseCvText } from '../lib/api';
 import { extractTextFromDOCX } from '../lib/documentParser';
 import { saveParsedData } from '../lib/supabaseUtils';
+import { createComponentLogger } from '../lib/logger';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -62,6 +63,8 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
   const [progress, setProgress] = useState(0);
   const [databaseSaveError, setDatabaseSaveError] = useState<string | null>(null);
 
+  const logger = createComponentLogger('CVUpload');
+
   const processFile = useCallback(async (file: File) => {
     if (!user) {
       setError(t('auth.required'));
@@ -74,7 +77,9 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
     setParsedData(null);
     setFileName(file.name);
     setProgress(0);
-    console.log("🔍 CV Processing start:", new Date().toISOString());
+    logger.log(`Starting file upload process for file: ${file.name}`);
+
+    logger.log(`Detected file type: ${file.type}`);
 
     let filePath: string | null = null;
 
