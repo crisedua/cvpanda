@@ -8,11 +8,23 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
+// Create Supabase client with properly accessed environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+// Log the environment variables (without showing full key for security)
+console.log('SUPABASE_URL:', supabaseUrl);
+console.log('SUPABASE_SERVICE_KEY:', supabaseServiceKey ? `${supabaseServiceKey.substring(0, 6)}...` : 'undefined');
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing required environment variables:');
+  if (!supabaseUrl) console.error('  - SUPABASE_URL is missing');
+  if (!supabaseServiceKey) console.error('  - SUPABASE_SERVICE_KEY is missing');
+  process.exit(1);
+}
+
 // Create Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY // Use service key for admin privileges
-);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Migration function
 async function migrateCVs() {
