@@ -148,23 +148,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize Supabase client (optional, remove if not needed for this endpoint)
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'server',
-        'X-Server-Authorization': 'bypass-rls'
-      }
-    }
+// Initialize Supabase client
+let supabase;
+try {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY environment variables.');
+    throw new Error('Supabase configuration is incomplete.');
   }
-);
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY, // <-- USE SERVICE ROLE KEY
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false // Explicitly disable for server
+      },
+      // No need for global headers when using service key, it bypasses RLS by default
+    }
+  );
+  console.log('Supabase client initialized successfully with Service Role Key.');
+} catch (error) {
+  console.error('Failed to initialize Supabase client:', error);
+  // Decide how to handle this - maybe allow server to start but log errors on DB ops?
+  supabase = null; // Ensure supabase is null if init fails
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -832,85 +840,89 @@ app.post('/api/extract-docx', upload.single('file'), async (req, res) => {
 
 // ADD DELETE CV ENDPOINT
 app.delete('/api/cvs/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`[delete-cv] Received request to delete CV with ID: ${id}`);
+  
+  if (!id) {
+    console.error('[delete-cv] Missing required parameter: id');
+    return res.status(400).json({ success: false, error: 'Missing required parameter: id' });
+  }
+  
+  if (!supabase) {
+    console.error('[delete-cv] Supabase client not initialized');
+    return res.status(500).json({ success: false, error: 'Database client not initialized' });
+  }
+
   try {
-    const { id } = req.params;
-    console.log(`[delete-cv] Received request to delete CV with ID: ${id}`);
+    // --- Step 1: Delete associated file from storage (if applicable) --- 
+    console.log('[delete-cv] Looking for associated storage file path');
+    let { data: filePathData, error: filePathError } = await supabase
+      .from('storage_file_paths')
+      .select('file_path')
+      .eq('cv_id', id)
+      .maybeSingle();
     
-    // Check for required params
-    if (!id) {
-      return res.status(400).json({ error: 'Missing required parameter: id' });
-    }
-    
-    // If we have Supabase configured, handle deletion there
-    if (supabase) {
-      console.log(`[delete-cv] Deleting CV from Supabase: ${id}`);
+    if (filePathError) {
+      // Log error but continue, DB deletion is more critical
+      console.warn('[delete-cv] Error fetching file path (continuing deletion):', filePathError.message);
+    } else if (filePathData && filePathData.file_path) {
+      console.log(`[delete-cv] Found file path: ${filePathData.file_path}, attempting deletion from storage bucket 'cvs'`);
+      const { error: storageError } = await supabase.storage
+        .from('cvs') // Bucket name
+        .remove([filePathData.file_path]);
       
-      // First try to get storage file path if any
-      console.log('[delete-cv] Looking for associated storage file');
-      let { data: filePathData, error: filePathError } = await supabase
-        .from('storage_file_paths')
-        .select('file_path')
-        .eq('cv_id', id)
-        .maybeSingle();
-      
-      if (filePathError) {
-        console.warn('[delete-cv] Error fetching file path:', filePathError);
-      } else if (filePathData && filePathData.file_path) {
-        // Delete file from storage
-        console.log(`[delete-cv] Found file path: ${filePathData.file_path}, deleting from storage`);
-        const { error: storageError } = await supabase.storage
-          .from('cvs')
-          .remove([filePathData.file_path]);
-        
-        if (storageError) {
-          console.warn('[delete-cv] Error deleting from storage:', storageError);
-        } else {
-          console.log('[delete-cv] Successfully deleted file from storage');
-          
-          // Delete file path record
-          await supabase
-            .from('storage_file_paths')
-            .delete()
-            .eq('cv_id', id);
-        }
+      if (storageError) {
+        // Log error but continue
+        console.warn('[delete-cv] Error deleting from storage (continuing deletion):', storageError.message);
       } else {
-        console.log('[delete-cv] No file path found for this CV');
-      }
-      
-      // Delete the CV from parsed_cvs table
-      console.log('[delete-cv] Deleting CV from parsed_cvs table');
-      const { data: deletedRecord, error: deleteError } = await supabase
-        .from('parsed_cvs')
-        .delete()
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (deleteError) {
-        if (deleteError.code === 'PGRST116') {
-          // Not found
-          console.warn('[delete-cv] CV not found in parsed_cvs table');
-          return res.status(404).json({ error: 'CV not found' });
-        } else {
-          console.error('[delete-cv] Error deleting CV:', deleteError);
-          return res.status(500).json({ error: 'Failed to delete CV', details: deleteError.message });
+        console.log('[delete-cv] Successfully deleted file from storage');
+        // Clean up the path record itself
+        const { error: pathDeleteError } = await supabase
+          .from('storage_file_paths')
+          .delete()
+          .eq('cv_id', id);
+        if (pathDeleteError) {
+           console.warn('[delete-cv] Failed to delete file path record:', pathDeleteError.message);
         }
-      }
-      
-      if (deletedRecord) {
-        console.log(`[delete-cv] Successfully deleted CV with ID: ${id}`);
-        return res.json({ success: true, message: 'CV deleted successfully' });
-      } else {
-        console.warn('[delete-cv] No CV was deleted (not found)');
-        return res.status(404).json({ error: 'CV not found' });
       }
     } else {
-      console.error('[delete-cv] Supabase client not initialized');
-      return res.status(500).json({ error: 'Supabase client not initialized' });
+      console.log('[delete-cv] No associated storage file path found.');
     }
+    
+    // --- Step 2: Delete the CV record from the database --- 
+    console.log(`[delete-cv] Attempting to delete CV record from 'parsed_cvs' table with ID: ${id}`);
+    const { data: deletedRecords, error: deleteError, count } = await supabase
+      .from('parsed_cvs') // Ensure correct table name
+      .delete()
+      .eq('id', id)
+      .select(); // Select deleted records to confirm
+    
+    // --- Step 3: Verify Deletion and Respond --- 
+    if (deleteError) {
+      // Handle specific DB errors
+      console.error('[delete-cv] Supabase delete error:', deleteError.message, `(Code: ${deleteError.code})`);
+      // Check for potential RLS issues or other common problems
+      if (deleteError.code === '42501') { // permission denied
+         return res.status(403).json({ success: false, error: 'Permission denied. Check RLS policies.', details: deleteError.message });
+      }
+      return res.status(500).json({ success: false, error: 'Database error during deletion', details: deleteError.message });
+    }
+    
+    // Check if any records were actually deleted
+    // `count` might be more reliable than checking `deletedRecords` length depending on Supabase version/config
+    if (count !== null && count > 0) {
+      console.log(`[delete-cv] Successfully deleted ${count} record(s) from parsed_cvs table.`);
+      return res.status(200).json({ success: true, message: 'CV deleted successfully' });
+    } else {
+      // No error, but nothing was deleted. This usually means the record wasn't found (or RLS prevented it silently)
+      console.warn(`[delete-cv] No records deleted for ID ${id}. CV might not exist or RLS prevented deletion.`);
+      return res.status(404).json({ success: false, error: 'CV not found or could not be deleted' });
+    }
+
   } catch (error) {
-    console.error('[delete-cv] Error deleting CV:', error);
-    return res.status(500).json({ error: 'Failed to delete CV', details: error.message });
+    // Catch any unexpected errors during the process
+    console.error('[delete-cv] Unexpected error in delete endpoint:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error during CV deletion', details: error.message });
   }
 });
 
