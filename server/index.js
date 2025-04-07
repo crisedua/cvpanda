@@ -945,8 +945,8 @@ app.get('/api/cvs', async (req, res) => {
     // Fetch necessary fields from parsed_cvs table for the given user
     const { data, error } = await supabase
       .from('parsed_cvs')
-      // Select file_name from DB, plus other necessary fields
-      .select('id, file_name, created_at, is_favorite, parsed_data') 
+      // Select available fields that exist in the table
+      .select('id, file_name, created_at, is_favorite, name, email, phone, linkedin_url, github_url, website_url, location, job_title, summary, skills, work_experience, education') 
       .eq('user_id', userId)
       .order('is_favorite', { ascending: false })
       .order('created_at', { ascending: false });
@@ -958,17 +958,39 @@ app.get('/api/cvs', async (req, res) => {
 
     console.log(`[get-cvs] Successfully fetched ${data?.length ?? 0} CVs for user ${userId}`);
     
-    // Map the database result (with file_name) to the frontend expected format (with filename)
-    const cvsForFrontend = data?.map(cv => ({ 
+    // Map the database result to the frontend expected format
+    const cvsForFrontend = data?.map(cv => {
+      // Create a parsed_data object from individual fields
+      const parsed_data = {
+        name: cv.name,
+        email: cv.email,
+        phone: cv.phone,
+        personal: {
+          name: cv.name,
+          email: cv.email,
+          phone: cv.phone,
+          linkedin: cv.linkedin_url,
+          github: cv.github_url,
+          website: cv.website_url,
+          location: cv.location,
+          title: cv.job_title
+        },
+        summary: cv.summary,
+        skills: cv.skills || [],
+        work_experience: cv.work_experience || [],
+        education: cv.education || []
+      };
+      
+      return { 
         id: cv.id,
-        filename: cv.file_name, // Map file_name to filename
+        filename: cv.file_name,
         created_at: cv.created_at,
         is_favorite: cv.is_favorite,
         isFavorite: cv.is_favorite, // Include isFavorite for compatibility
-        parsed_data: cv.parsed_data,
-        user_id: userId // Include userId if useful
-        // Add other properties from the CV type if needed and available
-    })) || [];
+        parsed_data: parsed_data,
+        user_id: userId
+      };
+    }) || [];
   
     return res.status(200).json({ success: true, cvs: cvsForFrontend });
 
