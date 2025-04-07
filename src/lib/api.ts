@@ -961,7 +961,7 @@ export const parseCvText = async (text: string): Promise<ApiExtractionResponse> 
     
     // Use fetch with timeout for better error handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // INCREASED to 60 second timeout
     
     console.log(`📤 Sending text to ${API_BASE_URL}/api/parse-text`);
     
@@ -998,14 +998,14 @@ export const parseCvText = async (text: string): Promise<ApiExtractionResponse> 
         // Return standardized response format
         return {
           success: true,
-          cvData: data.result // This format matches what the frontend expects
+          cvData: data.cvData // Ensure we expect cvData here
         };
       } catch (fetchError: any) {
         lastError = fetchError;
         attempts++;
         
         if (fetchError.name === 'AbortError') {
-          console.error('❌ Text parsing request timed out after 30s');
+          console.error('❌ Text parsing request timed out after 60s'); // Update log message
           break; // Don't retry timeouts
         }
         
