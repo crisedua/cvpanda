@@ -185,11 +185,16 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       console.log('🔍 Debug - API Response structure:', 
                   Object.keys(apiResponse).length ? Object.keys(apiResponse).join(', ') : 'empty');
       
-      // New format: {success: true, cvData: {...}}
-      if (apiResponse.success && apiResponse.cvData) {
-        console.log('✅ Found expected format with cvData');
-        parsedData = apiResponse.cvData;
+      // New format: {success: true, cvData: { gpt_data: {...}, full_text: "..." }}
+      if (apiResponse.success && apiResponse.cvData && apiResponse.cvData.gpt_data) { // Check for nested gpt_data
+        console.log('✅ Found expected format with nested cvData.gpt_data');
+        parsedData = apiResponse.cvData.gpt_data; // <-- Extract the nested gpt_data object
       } 
+      // Handle case where cvData might not have gpt_data (less likely now but good fallback)
+      else if (apiResponse.success && apiResponse.cvData && typeof apiResponse.cvData === 'object') {
+        console.log('⚠️ Found cvData, but without gpt_data. Using cvData directly.');
+        parsedData = apiResponse.cvData; // Fallback to using cvData directly if gpt_data isn't there
+      }
       // Backend format not updated yet: {success: true, result: {...}}
       else if (apiResponse.success && apiResponse.result) {
         console.log('✅ Found backend format with result');
