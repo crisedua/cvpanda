@@ -34,21 +34,46 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
   template = 'modern' 
 }) => {
   const { t } = useTranslation();
-  const data = language === 'english' ? cv.parsed_data_english : cv.parsed_data;
-  if (!data) return null;
+  
+  // Get the raw parsed data based on language
+  const rawParsedData = language === 'english' ? cv.parsed_data_english : cv.parsed_data;
+  
+  // Extract the actual CV data, potentially nested under 'gpt_data'
+  // Also handle cases where the data might not be nested (older formats)
+  const actualCvData = rawParsedData?.gpt_data || rawParsedData || {};
+  
+  console.log('CVTemplates - Rendering with CV:', cv);
+  console.log('CVTemplates - Raw Parsed Data Object:', rawParsedData);
+  console.log('CVTemplates - Using Actual CV Data:', actualCvData);
+  
+  if (!actualCvData || Object.keys(actualCvData).length === 0) {
+    console.warn('CVTemplates - No actual CV data found to render.');
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+        <AlertCircle className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
+        <p className="font-semibold text-yellow-700">{t('cv.errors.noParsedData', 'No parsed data available')}</p>
+        <p className="text-sm text-yellow-600">{t('cv.errors.tryRawView', 'Try viewing the raw or formatted text data.')}</p>
+      </div>
+    );
+  }
 
   // If this is a large CV, add extra handling to prevent rendering errors
   const isLargeCV = cv.is_large_cv;
   
-  // If sections are missing, create empty placeholders to prevent errors
+  // Prepare safe data for rendering, matching the latest GPT prompt structure
   const safeData = {
-    personal: data.personal || {},
-    summary: data.summary || '',
-    experience: Array.isArray(data.experience) ? data.experience : [],
-    education: Array.isArray(data.education) ? data.education : [],
-    skills: data.skills || {},
-    additional: data.additional || {}
+    // Use actualCvData for all fields now
+    personal: actualCvData.personal || { name: actualCvData.name, email: actualCvData.email, phone: actualCvData.phone, linkedin: actualCvData.linkedin_url, github: actualCvData.github_url, website: actualCvData.website_url, location: actualCvData.location, title: actualCvData.job_title } || {},
+    summary: actualCvData.summary || '',
+    experience: Array.isArray(actualCvData.work_experience) ? actualCvData.work_experience : [], // Match GPT key
+    education: Array.isArray(actualCvData.education) ? actualCvData.education : [],
+    skills: Array.isArray(actualCvData.skills) ? actualCvData.skills : [], // Skills are a flat array
+    certifications: Array.isArray(actualCvData.certifications) ? actualCvData.certifications : [], // Added certifications
+    languages: Array.isArray(actualCvData.languages) ? actualCvData.languages : [], // Added languages
+    additional: actualCvData.additional || {} // Keep for legacy/other sections
   };
+  
+  console.log('CVTemplates - Safe Data for Template:', safeData);
 
   const templates = {
     modern: {
@@ -76,11 +101,13 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
   const templateStyle = templates[template];
 
   const downloadPDF = async () => {
-    await generatePDF(cv, language);
+    // Pass the *actualCvData* to the generator
+    await generatePDF({ ...cv, parsed_data: actualCvData }, language);
   };
 
   const downloadWord = async () => {
-    await generateWord(cv, language);
+    // Pass the *actualCvData* to the generator
+    await generateWord({ ...cv, parsed_data: actualCvData }, language);
   };
 
   return (
@@ -140,14 +167,34 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
             {extractDataSafely(safeData.personal, ['phone']) && (
               <p>{extractDataSafely(safeData.personal, ['phone'])}</p>
             )}
-            {extractDataSafely(safeData.personal, ['linkedin']) && (
+            {extractDataSafely(safeData.personal, ['linkedin', 'linkedin_url']) && (
               <a
-                href={String(extractDataSafely(safeData.personal, ['linkedin']))}
+                href={String(extractDataSafely(safeData.personal, ['linkedin', 'linkedin_url']))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800"
               >
                 LinkedIn
+              </a>
+            )}
+             {extractDataSafely(safeData.personal, ['github', 'github_url']) && (
+              <a
+                href={String(extractDataSafely(safeData.personal, ['github', 'github_url']))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 ml-2"
+              >
+                GitHub
+              </a>
+            )}
+             {extractDataSafely(safeData.personal, ['website', 'website_url']) && (
+              <a
+                href={String(extractDataSafely(safeData.personal, ['website', 'website_url']))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 ml-2"
+              >
+                Website
               </a>
             )}
           </div>
@@ -182,44 +229,41 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
               {t('cv.sections.experience')}
             </h2>
             <div className="space-y-6">
-              {safeData.experience.map((exp, index) => (
+              {safeData.experience.map((exp: any, index: number) => (
                 <div key={index} className={template === 'modern' ? 'border-l-2 border-indigo-200 pl-4' : ''}>
                   <h3 className={`text-xl font-semibold text-gray-900 ${
                     template === 'minimal' ? 'text-lg' : ''
                   }`}>
-                    {extractDataSafely(exp, ['position'])}
+                    {extractDataSafely(exp, ['title'])}
                   </h3>
                   <div className="text-gray-600 mb-2">
                     <span className="font-medium">{extractDataSafely(exp, ['company'])}</span>
                     {extractDataSafely(exp, ['location']) && 
                       <span> • {extractDataSafely(exp, ['location'])}</span>
                     }
-                    {extractDataSafely(exp, ['duration']) && (
+                    {extractDataSafely(exp, ['dates']) && (
                       <div className="text-sm mt-1">
-                        {extractDataSafely(exp, ['duration'])}
+                        {extractDataSafely(exp, ['dates'])}
                       </div>
                     )}
                   </div>
                   
-                  {extractDataSafely(exp, ['responsibilities']) && 
-                   Array.isArray(extractDataSafely(exp, ['responsibilities'])) && (
-                    <ul className={`list-disc list-inside text-gray-700 mb-2 ${
+                  {extractDataSafely(exp, ['description']) && (
+                    <p className={`text-gray-700 mb-2 ${
                       template === 'minimal' ? 'text-sm' : ''
                     }`}>
-                      {extractDataSafely(exp, ['responsibilities'], []).map((resp, idx) => (
-                        <li key={idx} className="mb-1">{resp}</li>
-                      ))}
-                    </ul>
+                      {extractDataSafely(exp, ['description'])}
+                    </p>
                   )}
                   
-                  {extractDataSafely(exp, ['achievements']) && 
-                   Array.isArray(extractDataSafely(exp, ['achievements'])) && (
+                  {/* Ensure achievements is treated as an array */}
+                  {(Array.isArray(extractDataSafely(exp, ['achievements'], [])) && extractDataSafely(exp, ['achievements'], []).length > 0) && (
                     <div className="mt-2">
                       <p className="font-medium text-gray-900">Key Achievements:</p>
                       <ul className={`list-disc list-inside text-gray-700 ${
                         template === 'minimal' ? 'text-sm' : ''
                       }`}>
-                        {extractDataSafely(exp, ['achievements'], []).map((achievement, idx) => (
+                        {extractDataSafely(exp, ['achievements'], [] as string[]).map((achievement: string, idx: number) => (
                           <li key={idx} className="mb-1">{achievement}</li>
                         ))}
                       </ul>
@@ -242,7 +286,7 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
               {t('cv.sections.education')}
             </h2>
             <div className="space-y-4">
-              {safeData.education.map((edu, index) => (
+              {safeData.education.map((edu: any, index: number) => (
                 <div key={index} className={template === 'modern' ? 'border-l-2 border-indigo-200 pl-4' : ''}>
                   <h3 className={`text-xl font-semibold text-gray-900 ${
                     template === 'minimal' ? 'text-lg' : ''
@@ -250,17 +294,7 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
                     {extractDataSafely(edu, ['degree'])}
                   </h3>
                   <p className="text-gray-600">{extractDataSafely(edu, ['institution'])}</p>
-                  <p className="text-gray-600 text-sm">{extractDataSafely(edu, ['year'])}</p>
-                  {extractDataSafely(edu, ['honors']) && 
-                   Array.isArray(extractDataSafely(edu, ['honors'])) && (
-                    <ul className={`mt-2 list-disc list-inside text-gray-700 ${
-                      template === 'minimal' ? 'text-sm' : ''
-                    }`}>
-                      {extractDataSafely(edu, ['honors'], []).map((honor, idx) => (
-                        <li key={idx}>{honor}</li>
-                      ))}
-                    </ul>
-                  )}
+                  <p className="text-gray-600 text-sm">{extractDataSafely(edu, ['dates'])}</p>
                 </div>
               ))}
             </div>
@@ -268,7 +302,7 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
         )}
 
         {/* Skills */}
-        {safeData.skills && (
+        {safeData.skills.length > 0 && (
           <div className="mb-8">
             <h2 className={`text-2xl font-semibold mb-6 ${
               template === 'executive' ? 'uppercase tracking-wide border-b border-gray-300 pb-2' :
@@ -277,58 +311,64 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
             }`}>
               {t('cv.sections.skills')}
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {extractDataSafely(safeData.skills, ['technical']) && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Technical Skills</h3>
-                  <div className="space-y-2">
-                    {extractDataSafely(safeData.skills, ['technical'], []).map((skill, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700"
-                      >
-                        {skill}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {extractDataSafely(safeData.skills, ['soft']) && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Soft Skills</h3>
-                  <div className="space-y-2">
-                    {extractDataSafely(safeData.skills, ['soft'], []).map((skill, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700"
-                      >
-                        {skill}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {extractDataSafely(safeData.skills, ['industry']) && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Industry Knowledge</h3>
-                  <div className="space-y-2">
-                    {extractDataSafely(safeData.skills, ['industry'], []).map((skill, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700"
-                      >
-                        {skill}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="flex flex-wrap gap-2">
+              {/* Skills are now a flat array */}
+              {safeData.skills.map((skill: string, index: number) => (
+                <span
+                  key={index}
+                  className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700"
+                >
+                  {skill}
+                </span>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Additional Information */}
-        {Object.keys(safeData.additional).length > 0 && (
+        {/* Certifications */}
+        {safeData.certifications.length > 0 && (
+          <div className="mb-8">
+            <h2 className={`text-2xl font-semibold mb-4 ${
+              template === 'executive' ? 'uppercase tracking-wide border-b border-gray-300 pb-2' :
+              template === 'modern' ? 'text-indigo-600' :
+              ''
+            }`}>
+              {t('cv.sections.certifications', 'Certifications')}
+            </h2>
+            <div className="space-y-4">
+              {safeData.certifications.map((cert: any, index: number) => (
+                <div key={index} className={template === 'modern' ? 'border-l-2 border-indigo-200 pl-4' : ''}>
+                  <h3 className="text-lg font-medium text-gray-900">{extractDataSafely(cert, ['name'])}</h3>
+                  <p className="text-sm text-gray-600">{extractDataSafely(cert, ['issuer'])} {extractDataSafely(cert, ['date']) ? `(${extractDataSafely(cert, ['date'])})` : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Languages */}
+        {safeData.languages.length > 0 && (
+          <div className="mb-8">
+            <h2 className={`text-2xl font-semibold mb-4 ${
+              template === 'executive' ? 'uppercase tracking-wide border-b border-gray-300 pb-2' :
+              template === 'modern' ? 'text-indigo-600' :
+              ''
+            }`}>
+              {t('cv.sections.languages', 'Languages')}
+            </h2>
+            <div className="space-y-2">
+              {safeData.languages.map((lang: any, index: number) => (
+                <div key={index} className="flex justify-between">
+                  <span className="text-gray-700">{extractDataSafely(lang, ['language'])}</span>
+                  <span className="text-gray-500 text-sm">{extractDataSafely(lang, ['proficiency'])}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Additional Information - Kept for legacy data, remove if not needed */}
+        {Object.keys(safeData.additional || {}).length > 0 && (
           <div>
             <h2 className={`text-2xl font-semibold mb-4 ${
               template === 'executive' ? 'uppercase tracking-wide border-b border-gray-300 pb-2' :
@@ -340,12 +380,12 @@ const CVTemplates: React.FC<CVTemplatesProps> = ({
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${
               template === 'minimal' ? 'text-sm' : ''
             }`}>
-              {Object.entries(safeData.additional).map(([key, values]) => (
-                values && values.length > 0 && (
+              {Object.entries(safeData.additional || {}).map(([key, values]) => (
+                values && Array.isArray(values) && values.length > 0 && (
                   <div key={key}>
                     <h3 className="font-semibold text-gray-900 capitalize mb-2">{key}</h3>
                     <ul className="list-disc list-inside text-gray-700">
-                      {values.map((item, index) => (
+                      {values.map((item: any, index: number) => (
                         <li key={index} className="mb-1">{item}</li>
                       ))}
                     </ul>
