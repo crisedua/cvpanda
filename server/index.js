@@ -989,8 +989,7 @@ console.log(`Attempting to start server on port ${PORT}...`);
 const server = app.listen(PORT, '0.0.0.0', () => {
   // This callback ONLY runs if listen() is successful
   console.log(`\n--- SERVER LISTENING ---`);
-  console.log(`Backend server successfully bound and listening on port ${PORT}`);
-  console.log(`Accessible at: http://localhost:${PORT}`);
+  console.log(`Backend server successfully bound and listening on port ${PORT} (bound to 0.0.0.0)`);
   // Log environment details again after successful start
   console.log(`OpenAI API Key: ${process.env.OPENAI_API_KEY ? 'Present' : 'MISSING'}`);
   console.log(`Supabase URL: ${process.env.SUPABASE_URL ? 'Present' : 'MISSING'}`);
