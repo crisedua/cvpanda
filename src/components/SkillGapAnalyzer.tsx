@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { analyzeSkillGaps } from '../lib/api';
+import { analyzeSkillGaps, fetchUserCVs } from '../lib/api';
 import type { CV } from '../types';
 import LoadingScreen from './LoadingScreen';
 import ErrorMessage from './ErrorMessage';
@@ -80,24 +80,43 @@ const SkillGapAnalyzer = () => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    fetchUserCVs();
-    fetchSavedJobs();
+    if (user) {
+      fetchCVs();
+      fetchSavedJobs();
+    }
   }, [user]);
 
-  const fetchUserCVs = async () => {
+  const fetchCVs = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('cvs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
+      console.log('[SkillGapAnalyzer] Fetching CVs for user:', user.id);
+      
+      // Use the centralized fetchUserCVs function from API
+      const data = await fetchUserCVs(user.id);
+      
+      console.log('[SkillGapAnalyzer] Received CV data:', {
+        count: data?.length,
+        sources: data?.map(cv => cv.source || 'unknown').join(', '),
+        dataTypes: data?.map(cv => {
+          return {
+            id: cv.id,
+            filename: cv.filename,
+            hasParsedData: !!cv.parsedData,
+            hasMetadata: !!cv.metadata
+          };
+        })
+      });
+      
       setCvs(data || []);
+      
+      // Reset selected CV if it's no longer in the list
+      if (selectedCV && !data?.find(cv => cv.id === selectedCV.id)) {
+        setSelectedCV(null);
+      }
     } catch (err) {
+      console.error('[SkillGapAnalyzer] Error fetching CVs:', err);
       setError(t('errors.loadCvs'));
     } finally {
       setLoading(false);

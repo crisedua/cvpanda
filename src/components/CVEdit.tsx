@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import { createComponentLogger } from '../lib/logger';
 import ParsedCV from './ParsedCV';
 import type { CV } from '../types';
-import { getCV, getRawCV } from '../lib/api';
+import { getCV, getRawCV, fetchUserCVs } from '../lib/api';
 
 const logger = createComponentLogger('CVEdit');
 
@@ -40,7 +40,7 @@ const CVEdit = () => {
 
   useEffect(() => {
     if (user) {
-      fetchUserCVs();
+      fetchCVs();
     }
   }, [user]);
 
@@ -85,22 +85,41 @@ const CVEdit = () => {
     }
   }, [selectedCVId]);
 
-  const fetchUserCVs = async () => {
+  const fetchCVs = async () => {
     if (!user) return;
 
     try {
       logger.log('Fetching user CVs', { userId: user.id });
-      const { data, error: fetchError } = await supabase
-        .from('cvs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_favorite', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      logger.log('CVs fetched successfully', { count: data?.length });
-      setCvs(data || []);
+      
+      // Use the centralized fetchUserCVs function from API
+      setLoading(true);
+      const data = await fetchUserCVs(user.id);
+      
+      logger.log('CVs fetched successfully', { 
+        count: data?.length,
+        sources: data?.map(cv => cv.source || 'unknown').join(', '),
+        dataTypes: data?.map(cv => ({
+          id: cv.id,
+          filename: cv.filename,
+          hasParsedData: !!cv.parsedData,
+          hasMetadata: !!cv.metadata
+        }))
+      });
+      
+      // Sort the CVs by favorite status and creation date
+      const sortedData = [...data].sort((a, b) => {
+        const aIsFavorite = a.is_favorite || a.isFavorite || false;
+        const bIsFavorite = b.is_favorite || b.isFavorite || false;
+        
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        
+        const aDate = a.created_at || a.createdAt || new Date().toISOString();
+        const bDate = b.created_at || b.createdAt || new Date().toISOString();
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      });
+      
+      setCvs(sortedData || []);
     } catch (err) {
       logger.error('Error fetching CVs', err);
       setError(t('cv.errors.loadFailed'));
