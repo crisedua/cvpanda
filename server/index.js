@@ -35,6 +35,7 @@ if (process.env.APIFY_API_TOKEN) {
 const app = express();
 
 // Add custom header middleware *before* CORS
+/* // <-- Start comment
 app.use((req, res, next) => {
   // Add a unique header to verify deployment
   res.setHeader('X-CVPANDA-BACKEND-VERSION', 'cors-check-v2'); 
@@ -55,8 +56,10 @@ app.use((req, res, next) => {
   
   next();
 });
+*/ // <-- End comment
 
 // More permissive CORS configuration that overrides any defaults
+// This will now handle pre-flight requests correctly.
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, postman)
