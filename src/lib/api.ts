@@ -1052,4 +1052,80 @@ export const extractPdfTextServer = async (file: File): Promise<string> => {
     console.error('Error in extractPdfTextServer:', error);
     throw error;
   }
+};
+
+// Upload a file and parse it (Handles PDF and DOCX)
+export const uploadAndParseCV = async (file: File) => {
+  const startTime = Date.now();
+  logger.log('Starting CV upload and parse process...', { filename: file.name, size: file.size });
+
+  try {
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    let extractionEndpoint = '';
+
+    if (fileExt === 'pdf') {
+      extractionEndpoint = `${API_BASE_URL}/api/extract-pdf`;
+    } else if (['docx', 'doc'].includes(fileExt || '')) {
+      extractionEndpoint = `${API_BASE_URL}/api/extract-docx`;
+    } else {
+      throw new Error('Unsupported file format for direct extraction.');
+    }
+
+    // --- Step 1: Extract Text using the fast endpoint --- 
+    console.log(`Step 1: Uploading ${file.name} to ${extractionEndpoint} for text extraction...`);
+    const formData = new FormData();
+    // IMPORTANT: The backend endpoint expects the key 'pdf' or 'file' based on the route
+    const fileKey = extractionEndpoint.includes('extract-pdf') ? 'pdf' : 'file';
+    formData.append(fileKey, file);
+
+    const extractionResponse = await fetch(extractionEndpoint, {
+      method: 'POST',
+      body: formData,
+      // No timeout needed here, should be fast
+    });
+
+    if (!extractionResponse.ok) {
+      let errorText = 'Failed to extract text from file.';
+      try {
+        const errorData = await extractionResponse.json();
+        errorText = errorData.error || errorText;
+        console.error('Text extraction failed:', errorData);
+      } catch (e) {
+        errorText = `Server error ${extractionResponse.status} during text extraction.`;
+        console.error('Text extraction failed, non-JSON response:', await extractionResponse.text());
+      }
+      throw new Error(errorText);
+    }
+
+    const extractionData = await extractionResponse.json();
+    const textContent = extractionData.text;
+
+    if (!textContent || typeof textContent !== 'string' || textContent.trim().length === 0) {
+      console.error('No text content extracted from file.');
+      throw new Error('Could not extract text content from the uploaded file.');
+    }
+    
+    console.log(`Step 1 Complete: Extracted ${textContent.length} characters in ${Date.now() - startTime}ms.`);
+
+    // --- Step 2: Parse the extracted text using GPT --- 
+    console.log(`Step 2: Sending extracted text (${textContent.length} chars) to /api/parse-text...`);
+    const parseStartTime = Date.now();
+    
+    // Use the existing parseCvText function which already includes timeout and retries
+    const parseResult = await parseCvText(textContent);
+    
+    console.log(`Step 2 Complete: Text parsing finished in ${Date.now() - parseStartTime}ms.`);
+    console.log('Total processing time:', Date.now() - startTime, 'ms');
+
+    // Return the result from parseCvText (which should be { success: true, cvData: ... } or { success: false, error: ... })
+    return parseResult;
+
+  } catch (error) {
+    logger.error('Error in uploadAndParseCV:', error);
+    // Return error in the standardized format
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during CV processing'
+    };
+  }
 }; 
