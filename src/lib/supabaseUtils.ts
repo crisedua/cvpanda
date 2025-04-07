@@ -55,6 +55,23 @@ export const saveParsedData = async (
   console.log('Storage Path:', filePath);
   // console.log('Parsed Data:', cvData); // Log full data if needed for debugging
 
+  // Check authentication status
+  console.log('⚠️ CHECKING AUTH STATUS ⚠️');
+  const { data: sessionData } = await supabase.auth.getSession();
+  console.log('Current session:', sessionData);
+  
+  if (!sessionData?.session) {
+    console.error('⛔ NO ACTIVE SESSION FOUND - THIS WILL CAUSE RLS POLICY FAILURES');
+  } else {
+    console.log('✅ Session exists, user is authenticated');
+    console.log('Auth user ID:', sessionData.session.user.id);
+    console.log('Parameter user ID:', userId);
+    
+    if (sessionData.session.user.id !== userId) {
+      console.warn('⚠️ MISMATCH: Auth user ID does not match parameter userId');
+    }
+  }
+
   // --- Placeholder Implementation ---
   // Replace this with your actual logic to insert/update data in your Supabase table.
   // Ensure your table schema matches the fields you are inserting.
@@ -166,6 +183,35 @@ export const saveParsedData = async (
     }
     
     console.log('Successfully saved parsed data to Supabase:', insertData);
+
+    // Try a simplified insert operation with minimal data
+    console.log('Attempting simplified insert with minimal data...');
+    try {
+      // Create a minimal object with just the required fields
+      const minimalData = {
+        user_id: userId,
+        file_name: fileName || 'unknown.pdf',
+        full_text: cvData.full_text || 'No text extracted',
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('Minimal data structure:', minimalData);
+      
+      const { data: minimalInsert, error: minimalError } = await supabase
+        .from('parsed_cvs')
+        .insert([minimalData])
+        .select();
+        
+      if (minimalError) {
+        console.error('Even minimal insert failed:', minimalError);
+        console.error('This suggests a fundamental issue with database access or permissions');
+      } else {
+        console.log('✅ MINIMAL INSERT SUCCEEDED!', minimalInsert);
+        console.log('This means the issue is with the data format, not permissions');
+      }
+    } catch (e) {
+      console.error('Exception during minimal insert:', e);
+    }
   } catch (err) {
     console.error('Unexpected error during save operation:', err);
     throw err;
