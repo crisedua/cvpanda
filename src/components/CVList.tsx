@@ -9,26 +9,34 @@ import LoadingScreen from './LoadingScreen';
 interface CV {
   id: string;
   filename: string;
-  created_at: string;
-  metadata: {
+  createdAt?: string;
+  created_at?: string;
+  userId?: string;
+  user_id?: string;
+  isFavorite?: boolean;
+  is_favorite?: boolean;
+  source?: string;
+  // Fields for Supabase records
+  parsedData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    skills?: string[] | Record<string, string[]>;
+    work_experience?: Array<any>;
+    education?: Array<any>;
+    [key: string]: any;
+  };
+  // Fields for API records
+  metadata?: {
     name?: string;
     email?: string;
     phone?: string;
     skills?: string[];
-    experience?: Array<{
-      company: string;
-      position: string;
-      startDate: string;
-      endDate: string;
-      description: string;
-    }>;
-    education?: Array<{
-      institution: string;
-      degree: string;
-      year: string;
-    }>;
+    experience?: Array<any>;
+    education?: Array<any>;
+    [key: string]: any;
   };
-  is_favorite: boolean;
+  [key: string]: any;
 }
 
 const CVList: React.FC = () => {
@@ -52,9 +60,12 @@ const CVList: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching CVs for user:', user?.id);
       const data = await fetchUserCVs(user?.id || '');
+      console.log('Fetched CV data:', data);
       setCvs(data);
     } catch (err) {
+      console.error('Error fetching CVs:', err);
       setError(err instanceof Error ? err.message : 'Failed to load CVs');
     } finally {
       setLoading(false);
@@ -131,12 +142,20 @@ const CVList: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My CVs</h1>
-        <button
-          onClick={() => navigate('/import')}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Upload New CV
-        </button>
+        <div className="flex space-x-4">
+          <button
+            onClick={fetchCVs}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Refresh List
+          </button>
+          <button
+            onClick={() => navigate('/import')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Upload New CV
+          </button>
+        </div>
       </div>
 
       {cvs.length === 0 ? (
@@ -188,26 +207,56 @@ const CVList: React.FC = () => {
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  {cv.metadata.name && (
+                  {cv.metadata?.name && (
                     <p className="text-gray-600">
                       <span className="font-medium">Name:</span> {cv.metadata.name}
                     </p>
                   )}
-                  {cv.metadata.email && (
+                  {cv.parsedData?.name && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Name:</span> {cv.parsedData.name}
+                    </p>
+                  )}
+                  {cv.metadata?.email && (
                     <p className="text-gray-600">
                       <span className="font-medium">Email:</span> {cv.metadata.email}
                     </p>
                   )}
-                  {cv.metadata.phone && (
+                  {cv.parsedData?.email && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Email:</span> {cv.parsedData.email}
+                    </p>
+                  )}
+                  {cv.metadata?.phone && (
                     <p className="text-gray-600">
                       <span className="font-medium">Phone:</span> {cv.metadata.phone}
                     </p>
                   )}
-                  {cv.metadata.skills && cv.metadata.skills.length > 0 && (
+                  {cv.parsedData?.phone && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Phone:</span> {cv.parsedData.phone}
+                    </p>
+                  )}
+                  {cv.metadata?.skills && cv.metadata.skills.length > 0 && (
                     <div>
                       <span className="font-medium">Skills:</span>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {cv.metadata.skills.map((skill, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-gray-100 rounded text-sm"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {cv.parsedData?.skills && Array.isArray(cv.parsedData.skills) && (
+                    <div>
+                      <span className="font-medium">Skills:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {cv.parsedData.skills.map((skill, index) => (
                           <span
                             key={index}
                             className="px-2 py-1 bg-gray-100 rounded text-sm"
