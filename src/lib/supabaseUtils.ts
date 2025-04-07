@@ -50,67 +50,92 @@ export const saveParsedData = async (
   filePath: string | null,
   cvData: ParsedCVData
 ): Promise<void> => {
-  console.log('Saving parsed data to parsed_cvs table for user:', userId);
+  console.log('🔄 Starting database save operation...');
+  console.log('User ID:', userId);
   console.log('File Name:', fileName);
   console.log('Storage Path:', filePath);
   
-  // Check authentication status
-  console.log('⚠️ CHECKING AUTH STATUS ⚠️');
-  const { data: sessionData } = await supabase.auth.getSession();
-  console.log('Current session:', sessionData);
+  const startTime = Date.now();
   
-  if (!sessionData?.session) {
-    console.error('⛔ NO ACTIVE SESSION FOUND - THIS WILL CAUSE RLS POLICY FAILURES');
-  } else {
-    console.log('✅ Session exists, user is authenticated');
-    console.log('Auth user ID:', sessionData.session.user.id);
-    console.log('Parameter user ID:', userId);
-    
-    if (sessionData.session.user.id !== userId) {
-      console.warn('⚠️ MISMATCH: Auth user ID does not match parameter userId');
-    }
-  }
-
-  // Prepare data for insertion
-  const dataToInsert = {
-    user_id: userId,
-    file_name: fileName,
-    storage_path: filePath, // Store the storage path if available
-    // Map fields from cvData to database columns
-    full_text: cvData.full_text,
-    name: cvData.name,
-    email: cvData.email,
-    phone: cvData.phone,
-    linkedin_url: cvData.linkedin,
-    github_url: cvData.github,
-    website_url: cvData.website,
-    location: cvData.location,
-    job_title: cvData.job_title,
-    summary: cvData.summary,
-    // Ensure JSON fields are properly handled
-    skills: cvData.skills, 
-    work_experience: cvData.work_experience, 
-    education: cvData.education, 
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    is_favorite: false // Default to not favorite
-  };
-
-  console.log('Data prepared for insertion:', dataToInsert);
-
+  // Add timeout protection
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('Database operation timed out after 15 seconds'));
+    }, 15000); // 15 second timeout
+  });
+  
   try {
-    // Direct insert to parsed_cvs - no fallbacks or alternative tables
-    const { data: insertData, error: insertError } = await supabase
-      .from('parsed_cvs')
-      .insert([dataToInsert])
-      .select();
+    // Check authentication status
+    console.log('⚠️ CHECKING AUTH STATUS ⚠️');
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log('Session found:', !!sessionData?.session);
+    
+    if (!sessionData?.session) {
+      console.error('⛔ NO ACTIVE SESSION FOUND - THIS WILL CAUSE RLS POLICY FAILURES');
+    } else {
+      console.log('✅ Session exists, user is authenticated');
+      console.log('Auth user ID:', sessionData.session.user.id);
+      console.log('Parameter user ID:', userId);
       
+      if (sessionData.session.user.id !== userId) {
+        console.warn('⚠️ MISMATCH: Auth user ID does not match parameter userId');
+      }
+    }
+
+    // Prepare data for insertion - handle potential missing fields
+    const dataToInsert = {
+      user_id: userId,
+      file_name: fileName,
+      storage_path: filePath, // Store the storage path if available
+      // Map fields from cvData to database columns, with fallbacks
+      full_text: cvData.full_text || '',
+      name: cvData.name || '',
+      email: cvData.email || '',
+      phone: cvData.phone || '',
+      linkedin_url: cvData.linkedin || cvData.linkedin_url || '',
+      github_url: cvData.github || cvData.github_url || '',
+      website_url: cvData.website || cvData.website_url || '',
+      location: cvData.location || '',
+      job_title: cvData.job_title || '',
+      summary: cvData.summary || '',
+      // Ensure JSON fields are properly handled
+      skills: cvData.skills || [], 
+      work_experience: cvData.work_experience || [], 
+      education: cvData.education || [], 
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_favorite: false // Default to not favorite
+    };
+
+    console.log('Data prepared for insertion - data size:', 
+                JSON.stringify(dataToInsert).length, 'bytes');
+
+    // Use Promise.race to implement timeout
+    type SupabaseResponse = {
+      data: any[] | null;
+      error: { 
+        message: string;
+        code?: string;
+        details?: string;
+      } | null;
+    };
+    
+    const result = await Promise.race<SupabaseResponse>([
+      supabase
+        .from('parsed_cvs')
+        .insert([dataToInsert])
+        .select(),
+      timeoutPromise
+    ]);
+    
+    const { data: insertData, error: insertError } = result;
+    
     if (insertError) {
-      console.error('Error saving data to parsed_cvs table:', insertError);
+      console.error('❌ Error saving data to parsed_cvs table:', insertError);
       console.error('Error code:', insertError.code);
       console.error('Error details:', insertError.details);
       
-      // Provide guidance on potential RLS policy issues
+      // Check for common RLS policy issues
       if (insertError.message.includes('permission denied') || 
           insertError.code === '42501' || 
           insertError.message.includes('policy')) {
@@ -118,20 +143,32 @@ export const saveParsedData = async (
         console.error('Go to your Supabase dashboard -> Authentication -> Policies');
         console.error('Ensure you have an INSERT policy for the parsed_cvs table with this condition:');
         console.error('(auth.uid() = user_id)');
+        
+        // Verify the table exists
+        const { count, error: countError } = await supabase
+          .from('parsed_cvs')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) {
+          console.error('⚠️ Could not verify if table exists:', countError.message);
+        } else {
+          console.log('✅ Table exists, count query succeeded');
+        }
       }
       
       throw new Error(`Failed to save CV data: ${insertError.message}`);
     }
     
-    console.log('✅ Successfully saved data to parsed_cvs table:', insertData);
+    console.log('✅ Successfully saved data to parsed_cvs table!');
+    console.log('Time taken:', Date.now() - startTime, 'ms');
     
     // Save a reference to the storage path for easier cleanup later
-    if (filePath) {
+    if (filePath && insertData && insertData.length > 0) {
       try {
         const { error: pathError } = await supabase
           .from('storage_file_paths')
           .insert([{ 
-            cv_id: insertData?.[0]?.id,
+            cv_id: insertData[0].id,
             user_id: userId,
             file_path: filePath,
             created_at: new Date().toISOString()
@@ -147,7 +184,27 @@ export const saveParsedData = async (
       }
     }
   } catch (error) {
-    console.error('Exception during CV data save operation:', error);
+    console.error('❌ Exception during CV data save operation:', error);
+    console.error('Operation took', Date.now() - startTime, 'ms before failing');
+    
+    // Check if the table exists
+    try {
+      console.log('🔍 Diagnosing database issues...');
+      const { count, error: countError } = await supabase
+        .from('parsed_cvs')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        console.error('⚠️ Table check failed:', countError.message);
+        console.error('This suggests the table may not exist or you lack permissions to access it.');
+      } else {
+        console.log('✅ Table exists, contains approximately', count, 'records');
+        console.log('The issue is likely related to insert permissions or RLS policies.');
+      }
+    } catch (diagError) {
+      console.error('Failed to run diagnostics:', diagError);
+    }
+    
     throw error;
   }
 }; 
