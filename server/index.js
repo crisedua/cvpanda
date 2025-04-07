@@ -926,6 +926,49 @@ app.delete('/api/cvs/:id', async (req, res) => {
   }
 });
 
+// Endpoint to fetch all CVs for a specific user
+app.get('/api/cvs', async (req, res) => {
+  const userId = req.query.userId;
+  console.log(`[get-cvs] Received request to fetch CVs for user ID: ${userId}`);
+
+  if (!userId) {
+    console.error('[get-cvs] Missing required query parameter: userId');
+    return res.status(400).json({ success: false, error: 'Missing required query parameter: userId' });
+  }
+
+  if (!supabase) {
+    console.error('[get-cvs] Supabase client not initialized');
+    return res.status(500).json({ success: false, error: 'Database client not initialized' });
+  }
+
+  try {
+    // Fetch necessary fields from parsed_cvs table for the given user
+    // Ensure RLS is configured correctly if not relying solely on service key bypass
+    const { data, error } = await supabase
+      .from('parsed_cvs')
+      .select('id, filename, created_at, updated_at, is_favorite, parsed_data') // Select fields needed for list display
+      .eq('user_id', userId)
+      // Apply sorting directly in the query if possible
+      .order('is_favorite', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[get-cvs] Supabase select error:', error.message);
+      return res.status(500).json({ success: false, error: 'Database error fetching CVs', details: error.message });
+    }
+
+    console.log(`[get-cvs] Successfully fetched ${data?.length ?? 0} CVs for user ${userId}`);
+    // Add isFavorite for backward compatibility if needed by frontend
+    const cvsWithCompatibility = data?.map(cv => ({ ...cv, isFavorite: cv.is_favorite })) || [];
+    
+    return res.status(200).json({ success: true, cvs: cvsWithCompatibility });
+
+  } catch (error) {
+    console.error('[get-cvs] Unexpected error fetching CVs:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error fetching CVs', details: error.message });
+  }
+});
+
 // Enhanced Server Startup Logging
 const PORT = process.env.PORT || 3001;
 console.log(`Attempting to start server on port ${PORT}...`);

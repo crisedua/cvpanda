@@ -23,97 +23,55 @@ interface ApiExtractionResponse {
   cvData?: any; // For backward compatibility
 }
 
-// Fetch all CVs for a user
+// Fetch all CVs for a given user ID via backend API
 export const fetchUserCVs = async (userId: string) => {
+  if (!userId) {
+    logger.error('fetchUserCVs called without userId');
+    throw new Error('User ID is required to fetch CVs.');
+  }
+  if (!API_BASE_URL) {
+    logger.error('API_BASE_URL not configured for fetchUserCVs');
+    throw new Error('API base URL is not configured.');
+  }
+
+  const targetUrl = `${API_BASE_URL}/api/cvs?userId=${encodeURIComponent(userId)}`;
+  logger.log('Fetching user CVs via API:', { userId, url: targetUrl });
+
   try {
-    logger.log('Fetching CVs for user', { userId });
-    
-    if (!userId || userId.trim() === '') {
-      console.error('Invalid user ID provided to fetchUserCVs:', userId);
-      return [];
-    }
-    
-    // Only fetch from parsed_cvs table - our single source of truth
-    console.log('🔍 Fetching CVs from parsed_cvs table...');
-    console.log('🔑 Using user ID:', userId);
-    
-    const { data: userCVs, error: dbError } = await supabase
-      .from('parsed_cvs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('is_favorite', { ascending: false })
-      .order('created_at', { ascending: false });
-      
-    if (dbError) {
-      console.error('❌ Error fetching from parsed_cvs:', dbError);
-      return [];
-    }
-    
-    console.log('✅ Successfully fetched CVs from parsed_cvs, count:', userCVs?.length || 0);
-    console.log('🔍 Raw records:', userCVs);
-    
-    // Standardize data format to match the CVList component expectations
-    const standardizedCVs = (userCVs || []).map(cv => {
-      return {
-        id: cv.id,
-        userId: cv.user_id,
-        user_id: cv.user_id,
-        filename: cv.file_name || 'Unnamed CV',
-        file_name: cv.file_name,
-        isFavorite: cv.is_favorite,
-        is_favorite: cv.is_favorite,
-        createdAt: cv.created_at,
-        created_at: cv.created_at,
-        lastUpdated: cv.updated_at,
-        source: 'parsed_cvs',
-        // Provide data in both expected formats for compatibility
-        parsed_data: {
-          name: cv.name,
-          email: cv.email,
-          phone: cv.phone,
-          linkedin: cv.linkedin_url,
-          github: cv.github_url,
-          website: cv.website_url,
-          location: cv.location,
-          title: cv.job_title,
-          summary: cv.summary,
-          skills: cv.skills,
-          work_experience: cv.work_experience,
-          education: cv.education,
-        },
-        // Also provide data in the format expected by some components
-        parsedData: {
-          name: cv.name,
-          email: cv.email,
-          phone: cv.phone,
-          linkedin: cv.linkedin_url,
-          github: cv.github_url,
-          website: cv.website_url,
-          location: cv.location,
-          title: cv.job_title,
-          summary: cv.summary,
-          skills: cv.skills,
-          work_experience: cv.work_experience,
-          education: cv.education,
-        },
-        // Add metadata in both formats
-        metadata: {
-          name: cv.name,
-          email: cv.email,
-          phone: cv.phone,
-        },
-        // Include raw content if available
-        content: cv.full_text,
-        full_text: cv.full_text,
-      };
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
     });
-    
-    console.log('📊 Standardized CV count:', standardizedCVs.length);
-    return standardizedCVs;
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch CVs';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || `Server error ${response.status}`;
+        logger.error('Error fetching CVs (server response):', { status: response.status, errorData });
+      } catch (e) {
+        errorMessage = `Server error ${response.status} fetching CVs.`;
+        logger.error('Error fetching CVs, non-JSON response:', { status: response.status, text: await response.text() });
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+
+    if (data.success && Array.isArray(data.cvs)) {
+      logger.log('Successfully fetched CVs via API', { count: data.cvs.length });
+      // Data should already be sorted by the backend and include isFavorite
+      return data.cvs;
+    } else {
+      logger.error('Invalid response format from fetch CVs API', { data });
+      throw new Error(data.error || 'Invalid response format from server.');
+    }
+
   } catch (error) {
-    logger.error('Error fetching CVs', error);
-    console.error('Detailed error fetching CVs:', error);
-    return []; // Return empty array instead of throwing to prevent UI crashes
+    logger.error('Error in fetchUserCVs function:', error);
+    throw error; // Re-throw to be caught by the component
   }
 };
 
