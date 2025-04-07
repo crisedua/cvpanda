@@ -4,12 +4,50 @@ export interface CV {
   filename: string;
   content?: string;
   file_path?: string;
-  parsed_data?: any;
+  parsed_data?: ParsedCVData;
+  parsed_data_english?: ParsedCVData;
   metadata?: any;
   created_at: string;
   updated_at?: string;
   is_favorite: boolean;
-} 
+  isFavorite?: boolean;
+  source?: string;
+  is_large_cv?: boolean;
+  warning_message?: string;
+  using_raw_data?: boolean;
+  available_sections?: string[];
+}
+
+export interface ParsedCVData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  website_url?: string;
+  location?: string;
+  job_title?: string;
+  summary?: string;
+  skills?: string[];
+  work_experience?: WorkExperience[];
+  education?: EducationEntry[];
+  [key: string]: any;
+}
+
+export interface WorkExperience {
+  company?: string;
+  title?: string;
+  dates?: string;
+  location?: string;
+  description?: string;
+  achievements?: string[];
+}
+
+export interface EducationEntry {
+  institution?: string;
+  degree?: string;
+  dates?: string;
+}
 
 export interface ProfileKeywordAnalysis {
   keyword: string;

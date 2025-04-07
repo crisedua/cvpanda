@@ -943,7 +943,6 @@ app.get('/api/cvs', async (req, res) => {
 
   try {
     // Fetch necessary fields from parsed_cvs table for the given user
-    // Ensure RLS is configured correctly if not relying solely on service key bypass
     const { data, error } = await supabase
       .from('parsed_cvs')
       // Select file_name from DB, plus other necessary fields
@@ -968,15 +967,17 @@ app.get('/api/cvs', async (req, res) => {
         is_favorite: cv.is_favorite,
         isFavorite: cv.is_favorite, // Include isFavorite for compatibility
         parsed_data: cv.parsed_data,
-        // Add other fields expected by the CV type if necessary
-        user_id: userId // Might be useful for frontend context
+        user_id: userId // Include userId if useful
+        // Add other properties from the CV type if needed and available
     })) || [];
   
     return res.status(200).json({ success: true, cvs: cvsForFrontend });
 
   } catch (error) {
     console.error('[get-cvs] Unexpected error fetching CVs:', error);
-    return res.status(500).json({ success: false, error: 'Internal server error fetching CVs', details: error.message });
+    // Attempt to safely get message, default if not Error object
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return res.status(500).json({ success: false, error: 'Internal server error fetching CVs', details: errorMessage });
   }
 });
 
