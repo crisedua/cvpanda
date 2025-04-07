@@ -225,6 +225,16 @@ const SkillGapAnalyzer = () => {
     }
   };
 
+  const formatDate = (dateStr: string | undefined | null): string => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleDateString();
+    } catch (e) {
+      console.warn(`Invalid date format: ${dateStr}`);
+      return 'N/A';
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message={t('common.loading')} />;
   }
@@ -281,7 +291,7 @@ const SkillGapAnalyzer = () => {
                             {cv.parsed_data?.personal?.name || cv.filename}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {new Date(cv.created_at).toLocaleDateString()}
+                            {formatDate(cv.created_at || cv.createdAt)}
                           </p>
                         </div>
                       </div>

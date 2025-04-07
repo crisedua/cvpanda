@@ -186,111 +186,58 @@ const CVEdit = () => {
 
   const selectCV = async (cv: CV) => {
     try {
+      logger.log('Selecting CV', { cvId: cv.id });
       setLoading(true);
       setError(null);
       
-      logger.log('Selecting CV', { cvId: cv.id });
-      
-      // Set the CV immediately for better UX
+      // Set the CV immediately for UX
       setSelectedCV(cv);
       setEditMode(false);
       setEditedData(null);
       
-      // Try to fetch raw data for large CVs first
-      try {
-        logger.log('Fetching raw CV data', { cvId: cv.id });
-        const rawData = await getRawCV(cv.id);
-        
-        if (rawData && rawData.raw_content) {
-          logger.log('Received raw CV data', { 
-            cvId: cv.id, 
-            contentSize: rawData.raw_content.length
-          });
-          
-          // Update the CV with the raw content
-          cv.content = rawData.raw_content;
-          
-          // If there's extracted data, add it
-          if (rawData.extracted) {
-            if (!cv.parsed_data) {
-              cv.parsed_data = {};
-            }
-            
-            // Fill in any missing sections with the extracted data
-            if (rawData.extracted.personal && !cv.parsed_data.personal) {
-              cv.parsed_data.personal = rawData.extracted.personal;
-            }
-            
-            if (rawData.extracted.summary && !cv.parsed_data.summary) {
-              cv.parsed_data.summary = rawData.extracted.summary;
-            }
-            
-            // Mark the CV as using raw data
-            cv.using_raw_data = true;
-            cv.available_sections = rawData.extracted.available_sections;
-          }
-          
-          // Mark large CVs
-          if (rawData.raw_content.length > 30000) {
-            cv.is_large_cv = true;
-            cv.warning_message = t('cv.warnings.largeCV');
-          }
-          
-          // Update the CV with the raw data
-          setSelectedCV({...cv});
-          setLoading(false);
-          return;
-        }
-      } catch (rawErr) {
-        logger.warn('Could not fetch raw CV data, falling back to detailed view', rawErr);
-        // Continue with detailed view as fallback
+      // Check if we already have sufficient data to display
+      const hasBasicData = cv.content || (cv.parsedData && Object.keys(cv.parsedData).length > 0);
+      
+      // If we already have essential data from the list view, skip extra API calls
+      if (hasBasicData) {
+        logger.log('Using existing CV data for display', { cvId: cv.id, hasContent: !!cv.content });
+        setLoading(false);
+        return;
       }
       
-      // Then try to fetch enhanced data in the background
-      logger.log('Fetching detailed CV data', { cvId: cv.id });
+      // If we don't have content, fetch it with just ONE API call - the most important one
+      logger.log('Fetching CV data', { cvId: cv.id });
       
       try {
-        // Use the API endpoint with a timeout to prevent hanging
-        const fetchPromise = getCV(cv.id);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Fetch timeout')), 5000)
-        );
+        // Use a timeout to prevent hanging
+        const timeout = 8000; // 8 seconds timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
         
-        // Race the fetch against a timeout
-        const detailedData = await Promise.race([fetchPromise, timeoutPromise]);
+        const detailedData = await getCV(cv.id, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
         if (detailedData) {
           logger.log('Received detailed CV data', { cvId: cv.id });
           
-          // If the CV has text_content from the detailed view, update the local CV object
-          if (detailedData.text_content && !cv.content) {
-            cv.content = detailedData.text_content;
-          }
-          
-          // If there's section metadata, add it to the CV
-          if (detailedData.section_metrics) {
-            cv.section_metrics = detailedData.section_metrics;
-          }
-          
-          // Add extra metadata
-          cv.is_large_cv = detailedData.metrics?.content_size > 50000 || 
-                         detailedData.metrics?.parsed_data_size > 50000;
-          if (cv.is_large_cv) {
-            cv.warning_message = t('cv.warnings.largeCV');
-          }
-          
-          // Update the CV with the enhanced data
-          setSelectedCV({...cv});
+          // Merge the data with our selected CV
+          setSelectedCV({
+            ...cv,
+            content: detailedData.text_content || detailedData.content || cv.content,
+            parsedData: detailedData.parsed_data || cv.parsedData,
+            // Other fields
+          });
         }
-      } catch (fetchErr) {
-        // Just log the error but don't show to user since we already have basic CV data
-        logger.warn('Could not fetch detailed CV data', fetchErr);
-        // Continue with the basic CV data
+      } catch (err) {
+        // Just log the error but don't show to user since we already displayed the CV
+        logger.warn('Error fetching additional CV details', err);
+        // Continue showing what we have
+      } finally {
+        setLoading(false);
       }
     } catch (err) {
       logger.error('Error selecting CV', err);
-      setError(t('cv.errors.loadDetailsFailed'));
-    } finally {
+      setError('Failed to load CV details');
       setLoading(false);
     }
   };

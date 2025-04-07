@@ -8,6 +8,19 @@ const logger = createComponentLogger('API');
 // Revert back to direct API URL - CORS must be fixed on Railway backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
+// API response interfaces
+interface ApiExtractionResponse {
+  success: boolean;
+  result?: {
+    text: string;
+    pages?: number;
+    characters: number;
+    processingTimeMs: number;
+  };
+  error?: string;
+  cvData?: any; // For backward compatibility
+}
+
 // Fetch all CVs for a user
 export const fetchUserCVs = async (userId: string) => {
   try {
@@ -317,20 +330,121 @@ export const processCV = async (cvId: string) => {
 // Delete a CV
 export const deleteCV = async (cvId: string) => {
   try {
-    logger.log('Deleting CV', { cvId });
-    const response = await fetch(`${API_BASE_URL}/api/cvs/${cvId}`, {
-      method: 'DELETE',
-    });
+    logger.log('Deleting CV:', cvId);
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to delete CV');
+    // For API-stored CVs
+    if (API_BASE_URL) {
+      try {
+        const apiResponse = await fetch(`${API_BASE_URL}/api/cvs/${cvId}`, {
+          method: 'DELETE',
+        });
+        
+        if (apiResponse.ok) {
+          logger.log('Successfully deleted CV from API');
+        } else {
+          logger.warn('Failed to delete CV from API:', apiResponse.statusText);
+        }
+      } catch (apiError) {
+        logger.warn('Error deleting CV from API:', apiError);
+        // Continue with Supabase deletion even if API deletion fails
+      }
     }
     
-    logger.log('Successfully deleted CV', { cvId });
-    return true;
+    // Delete from Supabase
+    // First try parsed_cvs
+    let deleted = false;
+    try {
+      console.log('Attempting to delete from parsed_cvs table...');
+      const { error: parsedError, data: parsedResult } = await supabase
+        .from('parsed_cvs')
+        .delete()
+        .eq('id', cvId)
+        .select()
+        .single();
+      
+      if (parsedError) {
+        if (parsedError.code === 'PGRST116') {
+          // Not found - not an error
+          console.log('CV not found in parsed_cvs');
+        } else {
+          console.error('Error deleting from parsed_cvs:', parsedError);
+        }
+      } else if (parsedResult) {
+        console.log('Successfully deleted from parsed_cvs');
+        deleted = true;
+      }
+    } catch (parsedError) {
+      console.error('Exception deleting from parsed_cvs:', parsedError);
+    }
+    
+    // Then try cvs 
+    try {
+      console.log('Attempting to delete from cvs table...');
+      const { error: cvsError, data: cvsResult } = await supabase
+        .from('cvs')
+        .delete()
+        .eq('id', cvId)
+        .select()
+        .single();
+      
+      if (cvsError) {
+        if (cvsError.code === 'PGRST116') {
+          // Not found - not an error
+          console.log('CV not found in cvs table');
+        } else {
+          console.error('Error deleting from cvs:', cvsError);
+        }
+      } else if (cvsResult) {
+        console.log('Successfully deleted from cvs table');
+        deleted = true;
+      }
+    } catch (cvsError) {
+      console.error('Exception deleting from cvs:', cvsError);
+    }
+    
+    // Now try to delete the actual file from storage
+    try {
+      console.log('Attempting to delete file from storage...');
+      const { data: filePathData, error: filePathError } = await supabase
+        .from('storage_file_paths')
+        .select('file_path')
+        .eq('cv_id', cvId)
+        .maybeSingle();
+      
+      if (filePathError) {
+        console.error('Error getting file path:', filePathError);
+      } else if (filePathData && filePathData.file_path) {
+        console.log('Found file path:', filePathData.file_path);
+        
+        const { error: storageError } = await supabase.storage
+          .from('cvs')
+          .remove([filePathData.file_path]);
+          
+        if (storageError) {
+          console.error('Error deleting file from storage:', storageError);
+        } else {
+          console.log('Successfully deleted file from storage');
+          
+          // Also delete the path entry
+          await supabase
+            .from('storage_file_paths')
+            .delete()
+            .eq('cv_id', cvId);
+        }
+      } else {
+        console.log('No file path found for this CV');
+      }
+    } catch (storageError) {
+      console.error('Exception deleting file from storage:', storageError);
+    }
+    
+    if (deleted) {
+      return { success: true, message: 'CV deleted successfully' };
+    } else {
+      return { success: false, message: 'CV not found in any table' };
+    }
   } catch (error) {
-    logger.error('Error deleting CV', error);
+    logger.error('Error in deleteCV:', error);
     throw error;
   }
 };
@@ -562,98 +676,76 @@ export const getRawCV = async (cvId: string) => {
  * @param file The PDF file to extract text from.
  * @returns The extracted text content.
  */
-export const extractPdfTextServer = async (file: File): Promise<string> => {
-  const logger = createComponentLogger('API.extractPdfTextServer');
+export const extractPdfText = async (file: File, options: { signal?: AbortSignal } = {}): Promise<ApiExtractionResponse> => {
+  const startTime = Date.now();
   try {
-    logger.log('Sending PDF for server-side extraction', { fileName: file.name, fileSize: file.size });
+    logger.log('Extracting text from PDF', { fileName: file.name, fileSize: file.size });
     
+    // Add a fast timeout to abort if taking too long
+    const { signal } = options;
+    
+    // Create FormData for the file
     const formData = new FormData();
-    formData.append('pdfFile', file, file.name); // Add filename
-
-    // Try the Python-powered endpoint first
-    try {
-      logger.log('Attempting to use Python-powered PDF extraction');
-      const pythonResponse = await fetch(`${API_BASE_URL}/api/extract-pdf-text-python`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (pythonResponse.ok) {
-        const data = await pythonResponse.json();
-        if (data && typeof data.text === 'string') {
-          logger.log('Successfully extracted PDF text via Python service', { textLength: data.text.length });
-          return data.text;
-        }
-      }
-      
-      logger.warn('Python PDF extraction failed, falling back to Node.js extraction', 
-        { status: pythonResponse.status, statusText: pythonResponse.statusText });
-    } catch (pythonError) {
-      logger.warn('Error using Python PDF extraction, falling back to Node.js extraction', pythonError);
-    }
-
-    // Fall back to original Node.js endpoint
-    logger.log('Falling back to Node.js PDF extraction');
-    const response = await fetch(`${API_BASE_URL}/api/extract-pdf-text`, {
+    formData.append('pdf', file);
+    
+    // Use fetch with timeout
+    const response = await fetch(`${API_BASE_URL}/api/extract-pdf`, {
       method: 'POST',
       body: formData,
+      signal, // Pass abort signal
     });
-
+    
     if (!response.ok) {
-      let errorMessage = 'Server failed to extract text from PDF';
-      let errorDetails = null;
-      
-      // Clone the response immediately before consuming it
-      let responseForText;
+      // Attempt to get the error message
+      let errorMessage;
       try {
-        responseForText = response.clone();
-      } catch (cloneError) {
-        // If cloning fails, just log it but continue
-        logger.warn('Could not clone response for text fallback:', cloneError);
+        const errorData = await response.json();
+        errorMessage = errorData.error || `Server error: ${response.status}`;
+      } catch {
+        errorMessage = `HTTP error: ${response.status}`;
       }
       
-      try {
-        // Attempt to parse JSON first
-        errorDetails = await response.json(); 
-        errorMessage = errorDetails.error || errorMessage;
-        logger.error('Server error during PDF extraction (JSON response):', errorDetails);
-      } catch (jsonError) { 
-        // If JSON parsing fails, THEN try reading as text
-        logger.warn('Could not parse error response as JSON, trying text...', jsonError);
-        try {
-          // Use the previously cloned response if available
-          if (responseForText) {
-            const textResponse = await responseForText.text();
-            logger.error('Non-JSON server error during PDF extraction:', { status: response.status, text: textResponse });
-            errorMessage += `: ${response.status} - ${textResponse}`;
-          } else {
-            // If we couldn't clone, at least log the response status
-            logger.error('Could not read response body (already consumed):', { status: response.status });
-            errorMessage += `: ${response.status} - ${response.statusText}`;
-          }
-        } catch (textErr) {
-           // If reading text also fails, log that.
-           logger.error('Could not read error response body as text either', textErr);
-           errorMessage += `: ${response.status} ${response.statusText}`; 
-        }
-      }
-      // Throw the constructed error message
       throw new Error(errorMessage);
     }
-
+    
     const data = await response.json();
-    if (!data || typeof data.text !== 'string') { // Check if text field is a string
-      logger.error('Invalid server response format', data);
-      throw new Error('Server returned an invalid response format after PDF extraction.');
+    const duration = Date.now() - startTime;
+    
+    // Validate response here instead of relying on the frontend
+    if (!data || !data.text) {
+      logger.error('Invalid response from PDF extraction:', data);
+      throw new Error('Invalid response structure from PDF extraction API');
     }
-
-    logger.log('Successfully extracted PDF text via Node.js service', { textLength: data.text.length });
-    return data.text;
-
+    
+    logger.log('Successfully extracted text from PDF', { 
+      fileName: file.name, 
+      textLength: data.text.length,
+      duration: `${duration}ms`
+    });
+    
+    // Return a standardized format
+    return {
+      success: true,
+      result: {
+        text: data.text,
+        pages: data.pages || 0,
+        characters: data.text.length,
+        processingTimeMs: duration
+      }
+    };
   } catch (error) {
-    logger.error('Error calling server-side PDF extraction', error);
-    // Re-throw the original error or a new one if needed
-    throw error instanceof Error ? error : new Error('An unknown error occurred');
+    const duration = Date.now() - startTime;
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.error('PDF extraction timed out', { 
+        fileName: file.name, 
+        duration: `${duration}ms` 
+      });
+      throw new Error('PDF extraction timed out. Please try a smaller file or a different format.');
+    }
+    
+    logger.error('Error extracting text from PDF', error);
+    throw error;
   }
 };
 
@@ -888,88 +980,6 @@ export const runJobScanNow = async (filterId: string) => {
     return data;
   } catch (error) {
     console.error('Error running job scan:', error);
-    throw error;
-  }
-};
-
-// Function to extract text and structured data from a PDF file
-export const extractPdfText = async (file: File) => {
-  const logger = createComponentLogger('API.extractPdfText');
-  try {
-    logger.log('Starting PDF extraction request', { filename: file.name, size: file.size });
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    // Log the endpoint being called
-    const endpoint = `${API_BASE_URL}/api/extract-pdf-gpt`;
-    logger.log('Calling endpoint:', endpoint);
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: formData, // Send as FormData, not JSON
-      // Do NOT set Content-Type header, browser will set it correctly with boundary for FormData
-    });
-
-    if (!response.ok) {
-      let errorMessage = 'Failed to extract data from PDF';
-      let errorDetails = null;
-      
-      // Clone the response immediately before consuming it
-      let responseForText;
-      try {
-        responseForText = response.clone();
-      } catch (cloneError) {
-        // If cloning fails, just log it but continue
-        logger.warn('Could not clone response for text fallback:', cloneError);
-      }
-      
-      try {
-        // Attempt to parse JSON first
-        errorDetails = await response.json(); 
-        errorMessage = errorDetails.error || errorMessage;
-        logger.error('Server error during PDF extraction (JSON response):', errorDetails);
-      } catch (jsonError) { 
-        // If JSON parsing fails, THEN try reading as text
-        logger.warn('Could not parse error response as JSON, trying text...', jsonError);
-        try {
-          // Use the previously cloned response if available
-          if (responseForText) {
-            const textResponse = await responseForText.text();
-            logger.error('Non-JSON server error during PDF extraction:', { status: response.status, text: textResponse });
-            errorMessage += `: ${response.status} - ${textResponse}`;
-          } else {
-            // If we couldn't clone, at least log the response status
-            logger.error('Could not read response body (already consumed):', { status: response.status });
-            errorMessage += `: ${response.status} - ${response.statusText}`;
-          }
-        } catch (textErr) {
-           // If reading text also fails, log that.
-           logger.error('Could not read error response body as text either', textErr);
-           errorMessage += `: ${response.status} ${response.statusText}`; 
-        }
-      }
-      // Throw the constructed error message
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    
-    // Correctly access the nested result object
-    if (!data || !data.result || (!data.result.structured_data && !data.result.gpt_data)) {
-        logger.error('Invalid response structure (missing result or nested data):', data);
-        throw new Error('Server returned an invalid response structure after PDF extraction.');
-    }
-
-    logger.log('Successfully extracted data from PDF');
-    // Transform to format expected by CVUpload component
-    return {
-      success: true,
-      cvData: data.result.gpt_data || data.result
-    };
-
-  } catch (error) {
-    logger.error('Error extracting PDF text', error);
     throw error;
   }
 };

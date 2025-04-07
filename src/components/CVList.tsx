@@ -224,7 +224,16 @@ const CVList: React.FC = () => {
                 <div className="space-y-1 mb-4 text-xs sm:text-sm text-gray-600">
                   <p>
                     <span className="font-medium">{t('cv.list.uploaded')}:</span> {
-                      new Date(cv.createdAt || cv.created_at || Date.now()).toLocaleDateString()
+                      (() => {
+                        const dateStr = cv.createdAt || cv.created_at;
+                        if (!dateStr) return 'N/A';
+                        try {
+                          return new Date(dateStr).toLocaleDateString();
+                        } catch (e) {
+                          console.warn(`Invalid date format: ${dateStr}`);
+                          return 'N/A';
+                        }
+                      })()
                     }
                   </p>
                   {(cv.parsedData?.name || cv.metadata?.name) && (
