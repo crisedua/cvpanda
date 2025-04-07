@@ -120,9 +120,19 @@ const upload = multer({
     fileSize: 25 * 1024 * 1024, // 25 MB max file size
   },
   fileFilter: function (req, file, cb) {
-    if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Only PDF files are allowed'), false);
+    // Accept both PDF and Word document formats
+    const acceptedMimeTypes = [
+      'application/pdf',                                              // PDF
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+      'application/msword'                                            // DOC
+    ];
+    
+    if (!acceptedMimeTypes.includes(file.mimetype)) {
+      console.error(`[upload] Rejected file with mimetype: ${file.mimetype}`);
+      return cb(new Error('Only PDF and Word documents are allowed'), false);
     }
+    
+    console.log(`[upload] Accepted file: ${file.originalname} (${file.mimetype})`);
     cb(null, true);
   }
 });
@@ -526,7 +536,7 @@ app.post('/api/parse-text', async (req, res) => {
       EXTRACT ALL WORK EXPERIENCES - even if there are more than 6. Do not truncate or summarize the list.`;
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt + "\n\nProvide your response as a valid JSON object, with no additional text before or after the JSON. DO NOT use markdown code blocks." },
           { role: "user", content: cvText } 
@@ -759,6 +769,80 @@ app.post('/api/extract-pdf', upload.single('pdf'), async (req, res) => {
       } 
     } catch(e){ 
       console.warn('[extract-pdf] Cleanup error:', e); 
+    }
+  }
+});
+
+// Add a new endpoint to handle Word document uploads
+app.post('/api/extract-docx', upload.single('file'), async (req, res) => {
+  console.log('[extract-docx] Word document extraction requested');
+  const startTime = Date.now();
+  
+  try {
+    const file = req.file;
+    if (!file) {
+      console.error('[extract-docx] No file provided');
+      return res.status(400).json({ error: 'No file provided' });
+    }
+    
+    console.log(`[extract-docx] Processing ${file.originalname} (${file.size} bytes)`);
+    
+    // Check if file is a Word document
+    if (file.mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && 
+        file.mimetype !== 'application/msword') {
+      console.error(`[extract-docx] Wrong file type: ${file.mimetype}`);
+      return res.status(400).json({ error: 'Only Word documents are allowed for this endpoint' });
+    }
+    
+    // For DOCX files, we need to use a package like mammoth
+    // Since we're in Node.js, we can use mammoth directly
+    console.log('[extract-docx] Importing mammoth...');
+    const mammoth = require('mammoth');
+    
+    try {
+      console.log('[extract-docx] Reading file...');
+      const buffer = fs.readFileSync(file.path);
+      
+      console.log('[extract-docx] Extracting text with mammoth...');
+      const result = await mammoth.extractRawText({ buffer });
+      
+      const extractedText = result.value;
+      console.log(`[extract-docx] Successfully extracted ${extractedText.length} characters in ${Date.now() - startTime}ms`);
+      
+      if (result.messages.length > 0) {
+        console.log('[extract-docx] Extraction warnings:', result.messages);
+      }
+      
+      // Return the text just like the PDF endpoint does
+      res.json({
+        text: extractedText,
+        pages: 0, // We don't have page information for Word docs
+        processingTimeMs: Date.now() - startTime
+      });
+      
+    } catch (docxError) {
+      console.error('[extract-docx] Error extracting text from Word document:', docxError);
+      return res.status(500).json({ 
+        error: 'Failed to extract text from Word document', 
+        details: docxError.message 
+      });
+    }
+    
+  } catch (error) {
+    console.error('[extract-docx] General error in endpoint:', error);
+    return res.status(500).json({ 
+      error: 'Failed to process Word document', 
+      details: error.message 
+    });
+  } finally {
+    // Always clean up the temporary file
+    try { 
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+        console.log('[extract-docx] Temporary file cleaned up');
+      }
+    } catch(e) { 
+      console.warn('[extract-docx] Cleanup error:', e); 
     }
   }
 });
