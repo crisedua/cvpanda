@@ -655,6 +655,71 @@ async function scrapeTrabajandoWithApify(interest, location) {
   }
 }
 
+// Add a new optimized PDF extraction endpoint
+app.post('/api/extract-pdf', upload.single('pdf'), async (req, res) => {
+  console.log('[extract-pdf] Fast PDF extraction requested');
+  const startTime = Date.now();
+  
+  try {
+    const file = req.file;
+    if (!file) {
+      console.error('[extract-pdf] No file provided');
+      return res.status(400).json({ error: 'No file provided' });
+    }
+    
+    console.log(`[extract-pdf] Processing ${file.originalname} (${file.size} bytes)`);
+    
+    // Extract text using pdf-parse (without GPT)
+    let pdfText = '';
+    let pageCount = 0;
+    
+    try {
+      const dataBuffer = fs.readFileSync(file.path);
+      const pdfData = await pdfParse(dataBuffer);
+      pdfText = pdfData.text;
+      pageCount = pdfData.numpages || 0;
+      
+      console.log(`[extract-pdf] Extracted ${pdfText.length} characters from ${pageCount} pages in ${Date.now() - startTime}ms`);
+    } catch (pdfError) {
+      console.error('[extract-pdf] Error extracting text from PDF:', pdfError);
+      // Clean up file even if PDF parsing fails
+      try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch(e){}
+      return res.status(500).json({ 
+        error: 'Failed to extract text from PDF', 
+        details: pdfError.message 
+      });
+    }
+    
+    // Return a fast response with just the raw text
+    const responseData = {
+      text: pdfText,
+      pages: pageCount,
+      processingTimeMs: Date.now() - startTime
+    };
+    
+    res.json(responseData);
+    
+  } catch (error) {
+    console.error('[extract-pdf] General error in endpoint:', error);
+    // Clean up file in case of general error
+    try { if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); } catch(e){}
+    res.status(500).json({ 
+      error: 'Failed to process request', 
+      details: error.message 
+    });
+  } finally {
+    // Always clean up the temporary file
+    try { 
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+        console.log('[extract-pdf] Temporary file cleaned up');
+      } 
+    } catch(e){ 
+      console.warn('[extract-pdf] Cleanup error:', e); 
+    }
+  }
+});
+
 // Enhanced Server Startup Logging
 const PORT = process.env.PORT || 3001;
 console.log(`Attempting to start server on port ${PORT}...`);
