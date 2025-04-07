@@ -572,13 +572,13 @@ app.post('/api/parse-text', async (req, res) => {
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
-        result: {
+        cvData: {
             gpt_data: gptParsedData,
             full_text: cvText,
         }
       };
 
-      console.log('[API Response - Text] Sending structured CV data ONLY.');
+      console.log('[API Response - Text] Sending structured CV data matching frontend expectation.');
       res.json(finalResponse);
 
     } catch (gptError) {
