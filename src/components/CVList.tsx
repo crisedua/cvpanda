@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Star, Trash2, Download, ExternalLink, Upload } from 'lucide-react';
+import { FileText, Star, Trash2, Download, ExternalLink, Upload, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchUserCVs, deleteCV, toggleFavorite, processCV, downloadCV } from '../lib/api';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,6 @@ interface CV {
   isFavorite?: boolean;
   is_favorite?: boolean;
   source?: string;
-  // Fields for Supabase records
   parsedData?: {
     name?: string;
     email?: string;
@@ -26,7 +25,6 @@ interface CV {
     education?: Array<any>;
     [key: string]: any;
   };
-  // Fields for API records
   metadata?: {
     name?: string;
     email?: string;
@@ -60,12 +58,9 @@ const CVList: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching CVs for user:', user?.id);
       const data = await fetchUserCVs(user?.id || '');
-      console.log('Fetched CV data:', data);
       setCvs(data);
     } catch (err) {
-      console.error('Error fetching CVs:', err);
       setError(err instanceof Error ? err.message : 'Failed to load CVs');
     } finally {
       setLoading(false);
@@ -142,20 +137,12 @@ const CVList: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My CVs</h1>
-        <div className="flex space-x-4">
-          <button
-            onClick={fetchCVs}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            Refresh List
-          </button>
-          <button
-            onClick={() => navigate('/import')}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Upload New CV
-          </button>
-        </div>
+        <button
+          onClick={() => navigate('/import')}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Upload New CV
+        </button>
       </div>
 
       {cvs.length === 0 ? (
@@ -212,19 +199,9 @@ const CVList: React.FC = () => {
                       <span className="font-medium">Name:</span> {cv.metadata.name}
                     </p>
                   )}
-                  {cv.parsedData?.name && (
-                    <p className="text-gray-600">
-                      <span className="font-medium">Name:</span> {cv.parsedData.name}
-                    </p>
-                  )}
                   {cv.metadata?.email && (
                     <p className="text-gray-600">
                       <span className="font-medium">Email:</span> {cv.metadata.email}
-                    </p>
-                  )}
-                  {cv.parsedData?.email && (
-                    <p className="text-gray-600">
-                      <span className="font-medium">Email:</span> {cv.parsedData.email}
                     </p>
                   )}
                   {cv.metadata?.phone && (
@@ -232,40 +209,18 @@ const CVList: React.FC = () => {
                       <span className="font-medium">Phone:</span> {cv.metadata.phone}
                     </p>
                   )}
-                  {cv.parsedData?.phone && (
-                    <p className="text-gray-600">
-                      <span className="font-medium">Phone:</span> {cv.parsedData.phone}
-                    </p>
-                  )}
-                  {cv.metadata?.skills && cv.metadata.skills.length > 0 && (
-                    <div>
-                      <span className="font-medium">Skills:</span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {cv.metadata.skills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 rounded text-sm"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {cv.parsedData?.skills && Array.isArray(cv.parsedData.skills) && (
-                    <div>
-                      <span className="font-medium">Skills:</span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {cv.parsedData.skills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 rounded text-sm"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                  {Array.isArray(cv.parsedData?.skills) && 
+                    cv.parsedData.skills.slice(0, 5).map((skill: string, index: number) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-gray-100 rounded text-sm"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  {Array.isArray(cv.parsedData?.skills) && 
+                    cv.parsedData.skills.length > 5 && (
+                      <span className="text-xs text-gray-400">...</span>
                   )}
                 </div>
 
