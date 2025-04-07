@@ -724,6 +724,9 @@ app.post('/api/parse-text', async (req, res) => {
         throw new Error('Failed to parse structured data from GPT response.');
       }
 
+      // Log the entire parsed object to see exactly what GPT returned
+      console.log('[parse-text] Full parsed data from GPT:', JSON.stringify(gptParsedData, null, 2));
+
       const finalResponse = {
         success: true,
         // Ensure this structure matches what CVUpload expects now
