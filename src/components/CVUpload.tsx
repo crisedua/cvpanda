@@ -113,26 +113,59 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       let apiResponse: ApiExtractionResponse | null = null;
 
       try {
+        let textContent: string | null = null;
+
+        // Step 1: Extract Raw Text
         if (fileExt === 'pdf') {
           console.log('🔄 Calling extractPdfText API...');
-          apiResponse = await extractPdfText(file);
-          console.log('✅ extractPdfText API call completed');
+          const extractionResponse = await extractPdfText(file);
+          console.log('✅ extractPdfText API call completed', extractionResponse);
+          if (!extractionResponse?.success || !extractionResponse.result?.text) {
+            throw new Error(extractionResponse?.error || t('cv.upload.error.pdfExtract'));
+          }
+          textContent = extractionResponse.result.text;
+          console.log(`📄 Raw text extracted from PDF (${textContent.length} chars).`);
+          setProgress(60); // Update progress after extraction
         } else if (fileExt === 'docx' || fileExt === 'doc') {
           console.log('🔄 Extracting text from Word doc locally...');
-          const textContent = await extractTextFromDOCX(file);
+          textContent = await extractTextFromDOCX(file);
           if (!textContent) throw new Error(t('cv.upload.error.wordExtract'));
+          console.log(`📄 Raw text extracted from DOCX (${textContent.length} chars).`);
+          setProgress(60); // Update progress after extraction
+        } else {
+          throw new Error(t('cv.upload.error.unsupportedFormat', { format: fileExt }));
+        }
+
+        // Step 2: Parse the Extracted Text
+        if (textContent) {
           console.log('🔄 Calling parseCvText API with extracted text...');
           apiResponse = await parseCvText(textContent);
           console.log('✅ parseCvText API call completed');
         } else {
-          throw new Error(t('cv.upload.error.unsupportedFormat', { format: fileExt }));
+          // Should not happen if extraction succeeded, but handle defensively
+          throw new Error('Text content was empty after extraction.');
         }
-      } catch (extractionError: any) {
-        console.error('❌ Text extraction failed:', extractionError);
-        throw new Error(`Text extraction error: ${extractionError.message || 'Unknown extraction error'}`);
+
+      } catch (extractionOrParsingError: any) {
+        console.error('❌ Text extraction or parsing failed:', extractionOrParsingError);
+        let errorMessage = extractionOrParsingError.message || t('cv.upload.error.generic');
+        if (extractionOrParsingError instanceof Error) {
+          if (extractionOrParsingError.message.includes('aborted')) {
+            errorMessage = t('cv.upload.error.timeout');
+          } else if (extractionOrParsingError.message.includes('parseCvText') || 
+                     extractionOrParsingError.message.includes('parse-text') || 
+                     errorMessage.includes('API Error')) {
+            // Catch errors from the parsing step more specifically
+            errorMessage = t('cv.upload.error.apiError'); 
+          } else if (errorMessage.includes('extractPdfText') || errorMessage.includes('extract-pdf')){
+            // Catch errors from the text extraction step
+             errorMessage = t('cv.upload.error.pdfExtract');
+          }
+        }
+        throw new Error(errorMessage);
       }
       
-      console.log('✅ Text extraction complete');
+      console.log('✅ Text extraction and parsing complete'); 
       setProgress(70);
 
       if (!apiResponse) {
