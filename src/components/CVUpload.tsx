@@ -131,18 +131,63 @@ export default function CVUpload({ onUploadSuccess }: CVUploadProps) {
       // Handle response from API which may be in different formats
       let parsedData;
       
+      // Debug what we got
+      console.log('Debug - API Response structure:', 
+                  Object.keys(apiResponse).length ? Object.keys(apiResponse).join(', ') : 'empty');
+      
       // New format: {success: true, cvData: {...}}
       if (apiResponse.success && apiResponse.cvData) {
+        console.log('Found expected format with cvData');
         parsedData = apiResponse.cvData;
       } 
+      // Backend format not updated yet: {success: true, result: {...}}
+      else if (apiResponse.success && apiResponse.result) {
+        console.log('Found backend format with result');
+        parsedData = apiResponse.result; 
+      }
       // Direct data format
       else if (apiResponse.gpt_data || apiResponse.structured_data) {
+        console.log('Found legacy format with gpt_data/structured_data');
         parsedData = apiResponse;
+      }
+      // Try to recover data even if structure is unexpected
+      else if (apiResponse.success === true && typeof apiResponse === 'object') {
+        console.log('Attempting to recover data from unexpected structure');
+        
+        // Look for any property that might contain our data
+        const possibleDataFields = Object.keys(apiResponse).filter(key => 
+          key !== 'success' && 
+          key !== 'error' && 
+          typeof apiResponse[key] === 'object' && 
+          apiResponse[key] !== null
+        );
+        
+        if (possibleDataFields.length > 0) {
+          console.log('Found potential data fields:', possibleDataFields.join(', '));
+          // Use the first object-type field we find
+          parsedData = apiResponse[possibleDataFields[0]];
+        } else {
+          // Last resort - use the whole response
+          console.log('No data fields found, using entire response');
+          parsedData = apiResponse;
+        }
       }
       // Invalid format
       else {
         console.error('Invalid API response format:', apiResponse);
-        throw new Error(apiResponse.error || t('cv.upload.error.apiError'));
+        
+        // If we got an error message from the API, display it
+        if (apiResponse.error) {
+          throw new Error(`API Error: ${apiResponse.error}`);
+        }
+        
+        // If response timed out or was aborted, show a more specific message
+        if (String(apiResponse).includes('aborted') || String(apiResponse).includes('timeout')) {
+          throw new Error(t('cv.upload.error.timeout'));
+        }
+        
+        // Default generic error
+        throw new Error(t('cv.upload.error.apiError'));
       }
       
       setParsedData(parsedData);
