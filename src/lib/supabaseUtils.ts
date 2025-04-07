@@ -103,7 +103,6 @@ export const saveParsedData = async (
       work_experience: cvData.work_experience || [], 
       education: cvData.education || [], 
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       is_favorite: false // Default to not favorite
     };
 
