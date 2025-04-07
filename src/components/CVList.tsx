@@ -42,6 +42,7 @@ const CVList: React.FC = () => {
   const [cvs, setCvs] = useState<CV[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -91,17 +92,34 @@ const CVList: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    console.log(`[CVList handleDelete] Clicked delete for ID: ${id}`);
     if (!confirm(t('cv.list.deleteConfirm'))) {
+      console.log('[CVList handleDelete] User cancelled deletion.');
       return;
     }
-    console.log(`[CVList] Attempting to delete CV: ${id}`);
+
+    setError(null);
+    setIsDeleting(id);
+
     try {
-      await deleteCV(id);
-      console.log(`[CVList] Successfully deleted CV ${id}, refreshing list...`);
-      fetchCVs();
-    } catch (err) {
-      console.error(`[CVList] Error deleting CV ${id}:`, err);
-      setError(err instanceof Error ? err.message : 'Failed to delete CV');
+      console.log(`[CVList handleDelete] Calling deleteCV API function for ID: ${id}`);
+      const result = await deleteCV(id);
+      console.log(`[CVList handleDelete] API call result:`, result);
+      
+      if (result.success) {
+        console.log(`[CVList handleDelete] Successfully deleted CV ${id}, refreshing list...`);
+        setCvs(prevCvs => prevCvs.filter(cv => cv.id !== id));
+      } else {
+        console.error('[CVList handleDelete] API reported failure:', result.message);
+        setError(result.message || t('cv.list.errorDelete'));
+      }
+      
+    } catch (err: any) {
+      console.error(`[CVList handleDelete] Error during delete process for ID ${id}:`, err);
+      setError(err.message || t('cv.list.errorDelete'));
+    } finally {
+      console.log(`[CVList handleDelete] Finished delete process for ID: ${id}`);
+      setIsDeleting(null);
     }
   };
 

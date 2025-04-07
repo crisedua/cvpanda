@@ -308,12 +308,27 @@ export const processCV = async (cvId: string) => {
 
 // Delete a CV
 export const deleteCV = async (cvId: string) => {
+  console.log(`[api.ts deleteCV] Function called with ID: ${cvId}`); // LOG A: Function entry
+  if (!cvId) {
+    console.error('[api.ts deleteCV] Error: No cvId provided.');
+    throw new Error('No CV ID provided for deletion.');
+  }
+  if (!API_BASE_URL) {
+     console.error('[api.ts deleteCV] Error: API_BASE_URL is not set.');
+     throw new Error('API base URL is not configured.');
+  }
+  
+  const targetUrl = `${API_BASE_URL}/api/cvs/${cvId}`;
+  console.log(`[api.ts deleteCV] Target URL: ${targetUrl}`); // LOG B: Target URL
+  
   try {
     logger.log('Attempting to delete CV via backend endpoint:', cvId);
+    console.log(`[api.ts deleteCV] Sending DELETE request to: ${targetUrl}`); // LOG C: Before fetch
     
-    const response = await fetch(`${API_BASE_URL}/api/cvs/${cvId}`, {
+    const response = await fetch(targetUrl, {
       method: 'DELETE',
     });
+    console.log(`[api.ts deleteCV] Fetch response status: ${response.status}`); // LOG D: After fetch
 
     if (!response.ok) {
       let errorMessage = 'Failed to delete CV';
@@ -323,29 +338,30 @@ export const deleteCV = async (cvId: string) => {
         if (response.status === 404) {
           errorMessage = 'CV not found on server.';
         }
-        console.error('Error deleting CV (server response):', errorData);
+        console.error('[api.ts deleteCV] Error deleting CV (server response):', errorData); // LOG E: Server error JSON
       } catch (e) {
-        errorMessage = `Server error ${response.status} during delete.`;
-        console.error('Error deleting CV, non-JSON response:', await response.text());
+        const responseText = await response.text();
+        errorMessage = `Server error ${response.status} during delete. Response: ${responseText.substring(0,100)}`;
+        console.error('[api.ts deleteCV] Error deleting CV, non-JSON response:', responseText); // LOG F: Server error text
       }
       throw new Error(errorMessage);
     }
     
     // Assuming the backend returns { success: true, message: '...' } on success
     const data = await response.json();
+    console.log('[api.ts deleteCV] Backend response data:', data); // LOG G: Success response
     
     if (data.success) {
-        console.log('Successfully deleted CV via backend endpoint');
+        console.log('[api.ts deleteCV] Successfully deleted CV via backend endpoint');
         return { success: true, message: data.message || 'CV deleted successfully' };
     } else {
-        console.warn('Backend reported delete failure:', data.message);
+        console.warn('[api.ts deleteCV] Backend reported delete failure:', data.message);
         throw new Error(data.message || 'Backend failed to delete CV');
     }
 
   } catch (error) {
+    console.error('[api.ts deleteCV] Error in deleteCV function catch block:', error); // LOG H: Catch block
     logger.error('Error in deleteCV function:', error);
-    // Return a standard error format if needed, or re-throw
-    // return { success: false, message: error instanceof Error ? error.message : 'Unknown error' }; 
     throw error; // Re-throw to be caught by the component
   }
 };
