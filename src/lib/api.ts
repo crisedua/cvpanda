@@ -991,4 +991,27 @@ export const parseCvText = async (text: string) => {
     logger.error('Error calling text parsing endpoint', error);
     throw error instanceof Error ? error : new Error('An unknown error occurred');
   }
+};
+
+/**
+ * Legacy export for backwards compatibility with documentParser.ts
+ * This function maintains the old interface for PDF extraction
+ * @param file The PDF file to extract text from.
+ * @returns Plain string text content
+ */
+export const extractPdfTextServer = async (file: File): Promise<string> => {
+  try {
+    // Use the new implementation but adapt the return value
+    const result = await extractPdfText(file);
+    
+    // Return only the text content to maintain compatibility
+    if (result && result.success && result.result && result.result.text) {
+      return result.result.text;
+    }
+    
+    throw new Error('Failed to extract text from PDF');
+  } catch (error) {
+    console.error('Error in extractPdfTextServer:', error);
+    throw error;
+  }
 }; 
