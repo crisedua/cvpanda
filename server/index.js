@@ -946,9 +946,9 @@ app.get('/api/cvs', async (req, res) => {
     // Ensure RLS is configured correctly if not relying solely on service key bypass
     const { data, error } = await supabase
       .from('parsed_cvs')
-      .select('id, filename, created_at, updated_at, is_favorite, parsed_data') // Select fields needed for list display
+      // Select file_name from DB, plus other necessary fields
+      .select('id, file_name, created_at, updated_at, is_favorite, parsed_data') 
       .eq('user_id', userId)
-      // Apply sorting directly in the query if possible
       .order('is_favorite', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -958,10 +958,21 @@ app.get('/api/cvs', async (req, res) => {
     }
 
     console.log(`[get-cvs] Successfully fetched ${data?.length ?? 0} CVs for user ${userId}`);
-    // Add isFavorite for backward compatibility if needed by frontend
-    const cvsWithCompatibility = data?.map(cv => ({ ...cv, isFavorite: cv.is_favorite })) || [];
     
-    return res.status(200).json({ success: true, cvs: cvsWithCompatibility });
+    // Map the database result (with file_name) to the frontend expected format (with filename)
+    const cvsForFrontend = data?.map(cv => ({ 
+        id: cv.id,
+        filename: cv.file_name, // Map file_name to filename
+        created_at: cv.created_at,
+        updated_at: cv.updated_at,
+        is_favorite: cv.is_favorite,
+        isFavorite: cv.is_favorite, // Include isFavorite for compatibility
+        parsed_data: cv.parsed_data,
+        // Add other fields expected by the CV type if necessary
+        user_id: userId // Might be useful for frontend context
+    })) || [];
+  
+    return res.status(200).json({ success: true, cvs: cvsForFrontend });
 
   } catch (error) {
     console.error('[get-cvs] Unexpected error fetching CVs:', error);
