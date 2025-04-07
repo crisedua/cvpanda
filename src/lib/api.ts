@@ -1,6 +1,7 @@
 import { createComponentLogger } from './logger';
 import { JobScanFilter, ScannedJob } from '../types/index';
 import { extractTextFromDOCX } from './documentParser'; // Assuming it's exported from here
+import { supabase } from './supabase';
 
 const logger = createComponentLogger('API');
 
@@ -17,22 +18,90 @@ export const fetchUserCVs = async (userId: string) => {
       return [];
     }
     
-    console.log('Making request to:', `${API_BASE_URL}/api/cvs?userId=${userId}`);
-    const response = await fetch(`${API_BASE_URL}/api/cvs?userId=${userId}`);
+    // Array to store combined results
+    let allCVs: any[] = [];
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error response from server:', errorData);
-      throw new Error(errorData.error || 'Failed to fetch CVs');
+    // Step 1: Fetch from Supabase parsed_cvs table
+    console.log('Fetching CVs from Supabase database...');
+    try {
+      const { data: supabaseCVs, error: supabaseError } = await supabase
+        .from('parsed_cvs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+        
+      if (supabaseError) {
+        console.error('Error fetching from Supabase:', supabaseError);
+      } else if (supabaseCVs && supabaseCVs.length > 0) {
+        console.log('Successfully fetched CVs from Supabase, count:', supabaseCVs.length);
+        
+        // Map Supabase data to the expected format
+        const formattedSupabaseCVs = supabaseCVs.map((cv: any) => ({
+          id: cv.id,
+          userId: cv.user_id,
+          filename: cv.file_name || 'Unnamed CV',
+          isFavorite: false, // Default value since we don't have this in database
+          createdAt: cv.created_at,
+          lastUpdated: cv.created_at,
+          source: 'supabase',
+          parsedData: {
+            name: cv.name,
+            email: cv.email,
+            phone: cv.phone,
+            linkedin: cv.linkedin_url,
+            github: cv.github_url,
+            website: cv.website_url,
+            location: cv.location,
+            summary: cv.summary,
+            skills: cv.skills,
+            work_experience: cv.work_experience,
+            education: cv.education,
+            ...cv // Include any other fields
+          }
+        }));
+        
+        allCVs = [...formattedSupabaseCVs];
+      }
+    } catch (dbError) {
+      console.error('Exception fetching from Supabase:', dbError);
     }
     
-    const data = await response.json();
-    console.log('Successfully fetched CVs, count:', data.length, 'data:', data);
-    return data;
+    // Step 2: Also fetch from the API endpoint if it's configured
+    if (API_BASE_URL) {
+      try {
+        console.log('Making request to:', `${API_BASE_URL}/api/cvs?userId=${userId}`);
+        const response = await fetch(`${API_BASE_URL}/api/cvs?userId=${userId}`);
+        
+        if (!response.ok) {
+          console.error('API error:', response.status, response.statusText);
+        } else {
+          const apiData = await response.json();
+          console.log('Successfully fetched CVs from API, count:', apiData.length);
+          
+          // Add a source property to distinguish API CVs
+          const apiCVs = apiData.map((cv: any) => ({
+            ...cv,
+            source: 'api'
+          }));
+          
+          // Combine with Supabase results, avoiding duplicates by filename
+          const existingFilenames = new Set(allCVs.map(cv => cv.filename));
+          const uniqueApiCVs = apiCVs.filter(cv => !existingFilenames.has(cv.filename));
+          
+          allCVs = [...allCVs, ...uniqueApiCVs];
+        }
+      } catch (apiError) {
+        console.error('Error fetching from API:', apiError);
+      }
+    }
+    
+    console.log('Combined CV results count:', allCVs.length);
+    return allCVs;
+    
   } catch (error) {
     logger.error('Error fetching CVs', error);
     console.error('Detailed error fetching CVs:', error);
-    throw error;
+    return []; // Return empty array instead of throwing to prevent UI crashes
   }
 };
 
