@@ -31,106 +31,83 @@ export const fetchUserCVs = async (userId: string) => {
       return [];
     }
     
-    // Array to store combined results
-    let allCVs: any[] = [];
-    
-    // Step 1: Fetch from Supabase parsed_cvs table
-    console.log('🔍 Fetching CVs from Supabase database...');
+    // Only fetch from parsed_cvs table - our single source of truth
+    console.log('🔍 Fetching CVs from parsed_cvs table...');
     console.log('🔑 Using user ID:', userId);
-    try {
-      // First, check if the table exists by getting its schema
-      const { data: tableInfo, error: tableError } = await supabase
-        .from('parsed_cvs')
-        .select('*')
-        .limit(1);
+    
+    const { data: userCVs, error: dbError } = await supabase
+      .from('parsed_cvs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_favorite', { ascending: false })
+      .order('created_at', { ascending: false });
       
-      console.log('🔍 Table check result:', tableInfo ? 'Table exists' : 'Table not found', tableError ? `Error: ${tableError.message}` : '');
-      
-      // Try both user_id and userId formats
-      console.log('🔍 Attempting query with user_id field...');
-      const { data: supabaseCVs, error: supabaseError } = await supabase
-        .from('parsed_cvs')
-        .select('*');
-
-      console.log('🔍 All records in table:', supabaseCVs ? supabaseCVs.length : 0);
-      
-      // Now filter by user_id
-      const { data: userCVs, error: userError } = await supabase
-        .from('parsed_cvs')
-        .select('*')
-        .eq('user_id', userId);
-        
-      console.log('🔍 Records matching user_id:', userId, ':', userCVs ? userCVs.length : 0);
-      console.log('🔍 Raw records:', userCVs);
-        
-      if (supabaseError) {
-        console.error('❌ Error fetching from Supabase:', supabaseError);
-      } else if (userCVs && userCVs.length > 0) {
-        console.log('✅ Successfully fetched CVs from Supabase, count:', userCVs.length);
-        
-        // Map Supabase data to the expected format
-        const formattedSupabaseCVs = userCVs.map((cv: any) => ({
-          id: cv.id,
-          userId: cv.user_id,
-          filename: cv.file_name || 'Unnamed CV',
-          isFavorite: false, // Default value since we don't have this in database
-          createdAt: cv.created_at,
-          lastUpdated: cv.created_at,
-          source: 'supabase',
-          parsedData: {
-            name: cv.name,
-            email: cv.email,
-            phone: cv.phone,
-            linkedin: cv.linkedin_url,
-            github: cv.github_url,
-            website: cv.website_url,
-            location: cv.location,
-            summary: cv.summary,
-            skills: cv.skills,
-            work_experience: cv.work_experience,
-            education: cv.education,
-            ...cv // Include any other fields
-          }
-        }));
-        
-        allCVs = [...formattedSupabaseCVs];
-      }
-    } catch (dbError) {
-      console.error('Exception fetching from Supabase:', dbError);
+    if (dbError) {
+      console.error('❌ Error fetching from parsed_cvs:', dbError);
+      return [];
     }
     
-    // Step 2: Also fetch from the API endpoint if it's configured
-    if (API_BASE_URL) {
-      try {
-        console.log('Making request to:', `${API_BASE_URL}/api/cvs?userId=${userId}`);
-        const response = await fetch(`${API_BASE_URL}/api/cvs?userId=${userId}`);
-        
-        if (!response.ok) {
-          console.error('API error:', response.status, response.statusText);
-        } else {
-          const apiData = await response.json();
-          console.log('Successfully fetched CVs from API, count:', apiData.length);
-          
-          // Add a source property to distinguish API CVs
-          const apiCVs = apiData.map((cv: any) => ({
-            ...cv,
-            source: 'api'
-          }));
-          
-          // Combine with Supabase results, avoiding duplicates by filename
-          const existingFilenames = new Set(allCVs.map(cv => cv.filename));
-          const uniqueApiCVs = apiCVs.filter(cv => !existingFilenames.has(cv.filename));
-          
-          allCVs = [...allCVs, ...uniqueApiCVs];
-        }
-      } catch (apiError) {
-        console.error('Error fetching from API:', apiError);
-      }
-    }
+    console.log('✅ Successfully fetched CVs from parsed_cvs, count:', userCVs?.length || 0);
+    console.log('🔍 Raw records:', userCVs);
     
-    console.log('Combined CV results count:', allCVs.length);
-    return allCVs;
+    // Standardize data format to match the CVList component expectations
+    const standardizedCVs = (userCVs || []).map(cv => {
+      return {
+        id: cv.id,
+        userId: cv.user_id,
+        user_id: cv.user_id,
+        filename: cv.file_name || 'Unnamed CV',
+        file_name: cv.file_name,
+        isFavorite: cv.is_favorite,
+        is_favorite: cv.is_favorite,
+        createdAt: cv.created_at,
+        created_at: cv.created_at,
+        lastUpdated: cv.updated_at,
+        source: 'parsed_cvs',
+        // Provide data in both expected formats for compatibility
+        parsed_data: {
+          name: cv.name,
+          email: cv.email,
+          phone: cv.phone,
+          linkedin: cv.linkedin_url,
+          github: cv.github_url,
+          website: cv.website_url,
+          location: cv.location,
+          title: cv.job_title,
+          summary: cv.summary,
+          skills: cv.skills,
+          work_experience: cv.work_experience,
+          education: cv.education,
+        },
+        // Also provide data in the format expected by some components
+        parsedData: {
+          name: cv.name,
+          email: cv.email,
+          phone: cv.phone,
+          linkedin: cv.linkedin_url,
+          github: cv.github_url,
+          website: cv.website_url,
+          location: cv.location,
+          title: cv.job_title,
+          summary: cv.summary,
+          skills: cv.skills,
+          work_experience: cv.work_experience,
+          education: cv.education,
+        },
+        // Add metadata in both formats
+        metadata: {
+          name: cv.name,
+          email: cv.email,
+          phone: cv.phone,
+        },
+        // Include raw content if available
+        content: cv.full_text,
+        full_text: cv.full_text,
+      };
+    });
     
+    console.log('📊 Standardized CV count:', standardizedCVs.length);
+    return standardizedCVs;
   } catch (error) {
     logger.error('Error fetching CVs', error);
     console.error('Detailed error fetching CVs:', error);
@@ -332,79 +309,9 @@ export const deleteCV = async (cvId: string) => {
   try {
     logger.log('Deleting CV:', cvId);
     
-    // For API-stored CVs
-    if (API_BASE_URL) {
-      try {
-        const apiResponse = await fetch(`${API_BASE_URL}/api/cvs/${cvId}`, {
-          method: 'DELETE',
-        });
-        
-        if (apiResponse.ok) {
-          logger.log('Successfully deleted CV from API');
-        } else {
-          logger.warn('Failed to delete CV from API:', apiResponse.statusText);
-        }
-      } catch (apiError) {
-        logger.warn('Error deleting CV from API:', apiError);
-        // Continue with Supabase deletion even if API deletion fails
-      }
-    }
-    
-    // Delete from Supabase
-    // First try parsed_cvs
-    let deleted = false;
+    // First try to delete the actual file from storage
     try {
-      console.log('Attempting to delete from parsed_cvs table...');
-      const { error: parsedError, data: parsedResult } = await supabase
-        .from('parsed_cvs')
-        .delete()
-        .eq('id', cvId)
-        .select()
-        .single();
-      
-      if (parsedError) {
-        if (parsedError.code === 'PGRST116') {
-          // Not found - not an error
-          console.log('CV not found in parsed_cvs');
-        } else {
-          console.error('Error deleting from parsed_cvs:', parsedError);
-        }
-      } else if (parsedResult) {
-        console.log('Successfully deleted from parsed_cvs');
-        deleted = true;
-      }
-    } catch (parsedError) {
-      console.error('Exception deleting from parsed_cvs:', parsedError);
-    }
-    
-    // Then try cvs 
-    try {
-      console.log('Attempting to delete from cvs table...');
-      const { error: cvsError, data: cvsResult } = await supabase
-        .from('cvs')
-        .delete()
-        .eq('id', cvId)
-        .select()
-        .single();
-      
-      if (cvsError) {
-        if (cvsError.code === 'PGRST116') {
-          // Not found - not an error
-          console.log('CV not found in cvs table');
-        } else {
-          console.error('Error deleting from cvs:', cvsError);
-        }
-      } else if (cvsResult) {
-        console.log('Successfully deleted from cvs table');
-        deleted = true;
-      }
-    } catch (cvsError) {
-      console.error('Exception deleting from cvs:', cvsError);
-    }
-    
-    // Now try to delete the actual file from storage
-    try {
-      console.log('Attempting to delete file from storage...');
+      console.log('Finding file path for CV:', cvId);
       const { data: filePathData, error: filePathError } = await supabase
         .from('storage_file_paths')
         .select('file_path')
@@ -412,16 +319,17 @@ export const deleteCV = async (cvId: string) => {
         .maybeSingle();
       
       if (filePathError) {
-        console.error('Error getting file path:', filePathError);
+        console.warn('Error getting file path:', filePathError);
       } else if (filePathData && filePathData.file_path) {
         console.log('Found file path:', filePathData.file_path);
         
+        // Delete the file from storage
         const { error: storageError } = await supabase.storage
           .from('cvs')
           .remove([filePathData.file_path]);
           
         if (storageError) {
-          console.error('Error deleting file from storage:', storageError);
+          console.warn('Error deleting file from storage:', storageError);
         } else {
           console.log('Successfully deleted file from storage');
           
@@ -435,14 +343,38 @@ export const deleteCV = async (cvId: string) => {
         console.log('No file path found for this CV');
       }
     } catch (storageError) {
-      console.error('Exception deleting file from storage:', storageError);
+      console.warn('Exception deleting file from storage:', storageError);
+      // Continue with database deletion even if storage cleanup fails
     }
     
-    if (deleted) {
+    // Delete from parsed_cvs table - our single source of truth
+    console.log('Deleting CV from parsed_cvs table...');
+    const { data: deletedRecord, error: deleteError } = await supabase
+      .from('parsed_cvs')
+      .delete()
+      .eq('id', cvId)
+      .select()
+      .single();
+    
+    if (deleteError) {
+      if (deleteError.code === 'PGRST116') {
+        // Not found
+        console.warn('CV not found in parsed_cvs table');
+        return { success: false, message: 'CV not found' };
+      } else {
+        console.error('Error deleting CV from parsed_cvs:', deleteError);
+        throw deleteError;
+      }
+    }
+    
+    if (deletedRecord) {
+      console.log('Successfully deleted CV from parsed_cvs table');
       return { success: true, message: 'CV deleted successfully' };
     } else {
-      return { success: false, message: 'CV not found in any table' };
+      console.warn('No CV was deleted (not found)');
+      return { success: false, message: 'CV not found' };
     }
+    
   } catch (error) {
     logger.error('Error in deleteCV:', error);
     throw error;
@@ -452,21 +384,48 @@ export const deleteCV = async (cvId: string) => {
 // Toggle favorite status
 export const toggleFavorite = async (cvId: string) => {
   try {
-    logger.log('Toggling favorite status', { cvId });
-    const response = await fetch(`${API_BASE_URL}/api/cvs/${cvId}/favorite`, {
-      method: 'PUT',
-    });
+    logger.log('Toggling favorite for CV:', cvId);
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to toggle favorite status');
+    // First, get the current favorite status
+    const { data: cv, error: fetchError } = await supabase
+      .from('parsed_cvs')
+      .select('id, is_favorite')
+      .eq('id', cvId)
+      .single();
+    
+    if (fetchError) {
+      logger.error('Error fetching CV favorite status:', fetchError);
+      throw new Error('Failed to find CV');
     }
     
-    const data = await response.json();
-    logger.log('Successfully toggled favorite status', { cvId });
-    return data;
+    // Toggle the favorite status
+    const newFavoriteStatus = !cv.is_favorite;
+    logger.log(`Updating favorite status to: ${newFavoriteStatus}`);
+    
+    const { data: updatedCV, error: updateError } = await supabase
+      .from('parsed_cvs')
+      .update({ is_favorite: newFavoriteStatus })
+      .eq('id', cvId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      logger.error('Error updating favorite status:', updateError);
+      throw new Error('Failed to update favorite status');
+    }
+    
+    logger.log('Successfully updated favorite status');
+    
+    // Format the response to maintain compatibility with the existing interface
+    return { 
+      success: true, 
+      cv: {
+        ...updatedCV,
+        isFavorite: updatedCV.is_favorite, // Add isFavorite property for components expecting it
+      } 
+    };
   } catch (error) {
-    logger.error('Error toggling favorite status', error);
+    logger.error('Error in toggleFavorite:', error);
     throw error;
   }
 };
