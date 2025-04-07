@@ -37,15 +37,58 @@ const app = express();
 // Add custom header middleware *before* CORS
 app.use((req, res, next) => {
   // Add a unique header to verify deployment
-  res.setHeader('X-CVPANDA-BACKEND-VERSION', 'cors-check-v1'); 
+  res.setHeader('X-CVPANDA-BACKEND-VERSION', 'cors-check-v2'); 
+  
+  // Log the origin for debugging CORS issues
+  console.log('⚠️ Request Origin:', req.headers.origin);
+  
+  // Pre-flight response headers for CORS
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    console.log('⚠️ Handling preflight request');
+    return res.status(200).end();
+  }
+  
   next();
 });
 
+// More permissive CORS configuration that overrides any defaults
 app.use(cors({
-  origin: ['https://cvpanda.info', 'http://localhost:5173'],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if(!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'https://cvpanda.info',
+      'http://cvpanda.info',
+      'https://www.cvpanda.info',
+      'http://www.cvpanda.info',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'https://cvpanda-git-main-criseduas-projects.vercel.app',
+      'https://cvpanda-backend.onrender.com'
+    ];
+    
+    // Check if origin is allowed
+    if(allowedOrigins.indexOf(origin) === -1){
+      console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
+      // Don't block the request, but log it
+      return callback(null, true);
+    }
+    
+    console.log(`✅ Origin ${origin} allowed by CORS`);
+    return callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  exposedHeaders: ['X-CVPANDA-BACKEND-VERSION']
 }));
 app.use(express.json({ limit: '50mb' }));
 

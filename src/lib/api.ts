@@ -6,7 +6,9 @@ import { supabase } from './supabase';
 const logger = createComponentLogger('API');
 
 // Revert back to direct API URL - CORS must be fixed on Railway backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace('http://', 'https://');
+
+console.log('🌐 API Base URL:', API_BASE_URL);
 
 // API response interfaces
 interface ApiExtractionResponse {
@@ -944,52 +946,88 @@ export const runJobScanNow = async (filterId: string) => {
 };
 
 /**
- * Sends raw text content to the server for parsing using GPT.
- * @param text The text content to parse.
- * @returns The structured data result from the server.
+ * Parse raw CV text without requiring a PDF file
+ * @param text Raw text from the CV to parse
+ * @returns The parsed CV data
  */
-export const parseCvText = async (text: string) => {
-  const logger = createComponentLogger('API.parseCvText');
+export const parseCvText = async (text: string): Promise<ApiExtractionResponse> => {
+  const startTime = Date.now();
   try {
-    logger.log('Sending raw text for server-side parsing', { textLength: text.length });
+    console.log('🔄 Parsing CV text, length:', text.length, 'characters');
     
-    const response = await fetch(`${API_BASE_URL}/api/parse-text`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text }), // Send text in JSON body
-    });
-
-    if (!response.ok) {
-      let errorMessage = 'Server failed to parse text';
+    if (!text || text.trim().length === 0) {
+      throw new Error('Empty text provided for CV parsing');
+    }
+    
+    // Use fetch with timeout for better error handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    console.log(`📤 Sending text to ${API_BASE_URL}/api/parse-text`);
+    
+    let attempts = 0;
+    let lastError: any = null;
+    
+    while (attempts < 3) {
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        logger.error('Server error during text parsing:', { status: response.status, errorData });
-      } catch (e) {
-        errorMessage = `${response.status}: ${response.statusText}`;
-        logger.error('Server error during text parsing (non-JSON response):', { status: response.status, statusText: response.statusText });
+        const response = await fetch(`${API_BASE_URL}/api/parse-text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+          credentials: 'omit' // Important: don't send cookies for cross-origin
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Handle HTTP errors
+        if (!response.ok) {
+          console.warn(`❌ Server error (${response.status}) on attempt ${attempts + 1}`);
+          const responseText = await response.text();
+          console.warn('Response body:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+          
+          throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Successfully parsed CV text in', Date.now() - startTime, 'ms');
+        
+        // Return standardized response format
+        return {
+          success: true,
+          cvData: data.result // This format matches what the frontend expects
+        };
+      } catch (fetchError: any) {
+        lastError = fetchError;
+        attempts++;
+        
+        if (fetchError.name === 'AbortError') {
+          console.error('❌ Text parsing request timed out after 30s');
+          break; // Don't retry timeouts
+        }
+        
+        console.error(`❌ Text parsing attempt ${attempts} failed:`, fetchError.message);
+        
+        // Wait before retrying (500ms, 1000ms, then give up)
+        if (attempts < 3) {
+          const delay = 500 * attempts;
+          console.log(`Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-      throw new Error(errorMessage);
     }
-
-    const data = await response.json();
-    if (!data || !data.success || !data.result) {
-      logger.error('Invalid server response format after text parsing', data);
-      throw new Error('Server returned an invalid response format after text parsing.');
-    }
-
-    logger.log('Successfully parsed text using GPT', { 
-      source: data.source || 'unknown',
-      workExperiences: data.result.structured_data?.work_experience?.length || 0
-    });
     
-    // Return the same structure as extractPdfText for consistency
-    return data.result;
+    console.error('❌ Text parsing failed after multiple attempts');
+    throw lastError || new Error('Failed to parse CV text after multiple attempts');
   } catch (error) {
-    logger.error('Error calling text parsing endpoint', error);
-    throw error instanceof Error ? error : new Error('An unknown error occurred');
+    console.error('❌ Text parsing error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error in parseCvText'
+    };
   }
 };
 
