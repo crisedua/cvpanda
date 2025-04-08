@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchUserCVs, enhanceProfile } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,9 +14,19 @@ import {
   BarChart, 
   Target, 
   Calendar, 
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
-import { CV, ProfileEnhancementResult } from '../types';
+import { CV, ProfileEnhancementResult, ParsedCVData } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { createComponentLogger } from '../lib/logger';
+
+const logger = createComponentLogger('ProfileEnhancer');
+
+const getSafe = (obj: any, path: string[], defaultValue: any = '') => {
+  return path.reduce((xs, x) => (xs && xs[x] !== null && xs[x] !== undefined) ? xs[x] : defaultValue, obj);
+};
 
 const ProfileEnhancer: React.FC = () => {
   const { t } = useTranslation();
@@ -34,8 +44,8 @@ const ProfileEnhancer: React.FC = () => {
   const [progress, setProgress] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('keywords');
+  const [originalData, setOriginalData] = useState<ParsedCVData | null>(null);
 
-  // Replace hardcoded industry options with translations
   const INDUSTRY_OPTIONS = [
     t('profileEnhancer.industries.software'),
     t('profileEnhancer.industries.dataScience'),
@@ -54,7 +64,6 @@ const ProfileEnhancer: React.FC = () => {
     t('profileEnhancer.industries.other')
   ];
   
-  // Replace hardcoded career level options with translations
   const CAREER_LEVEL_OPTIONS = [
     t('profileEnhancer.careerLevels.entry'),
     t('profileEnhancer.careerLevels.junior'),
@@ -131,7 +140,6 @@ const ProfileEnhancer: React.FC = () => {
     setProgress(0);
     setError(null);
 
-    // Set up progress simulation
     const progressInterval = setInterval(() => {
       setProgress((prevProgress) => {
         const newProgress = prevProgress + Math.random() * 5;
@@ -148,7 +156,6 @@ const ProfileEnhancer: React.FC = () => {
         careerLevel
       });
       
-      // Call the enhancement API with detailed error logging
       const result = await enhanceProfile(
         selectedCV,
         targetPlatform,
@@ -162,7 +169,6 @@ const ProfileEnhancer: React.FC = () => {
       setEnhancementResult(result);
     } catch (error) {
       console.error('Error enhancing profile:', error);
-      // More specific error message in Spanish
       setError('Error al mejorar el perfil: ' + (error instanceof Error ? error.message : 'Error de conexión con el servidor'));
     } finally {
       clearInterval(progressInterval);
@@ -184,7 +190,6 @@ const ProfileEnhancer: React.FC = () => {
     setLoading(true);
     
     try {
-      // Save enhancement data
       const response = await fetch(`${API_BASE_URL}/api/save-optimization`, {
         method: 'POST',
         headers: {
@@ -206,7 +211,6 @@ const ProfileEnhancer: React.FC = () => {
       setSuccessMessage(t('profileOptimizer.saveSuccess'));
       console.log('Enhancement saved successfully');
       
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
@@ -215,6 +219,155 @@ const ProfileEnhancer: React.FC = () => {
       setError(t('profileOptimizer.saveFailed'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectCv = (cvId: string) => {
+    const selected = cvs.find(cv => cv.id === cvId);
+    if (selected && selected.parsed_data) {
+      setSelectedCV(cvId);
+      setOriginalData(selected.parsed_data);
+      setEnhancementResult(null);
+      setError(null);
+      logger.log('CV selected for enhancement', { cvId });
+    } else {
+      logger.warn('Selected CV has no parsed data', { cvId });
+      setError(t('profileEnhancer.errors.noParsedData', 'Selected CV has no parsed data.'));
+      setSelectedCV('');
+      setOriginalData(null);
+      setEnhancementResult(null);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    const dataToPdf = originalData;
+
+    if (!dataToPdf) {
+      logger.error('Attempted PDF download with no original CV data available');
+      setError(t('profileEnhancer.errors.noOriginalDataForPdf', 'Original CV data not found. Please re-select a CV.')); 
+      return;
+    }
+
+    logger.log('Starting PDF generation from original data');
+    const doc = new jsPDF();
+    const margin = 15;
+    let currentY = margin;
+
+    try {
+      const name = getSafe(dataToPdf, ['name'], 'Unnamed CV');
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(name, doc.internal.pageSize.getWidth() / 2, currentY, { align: 'center' });
+      currentY += 8;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const contactInfo = [
+        getSafe(dataToPdf, ['email'], ''),
+        getSafe(dataToPdf, ['phone'], ''),
+        getSafe(dataToPdf, ['location'], ''),
+        getSafe(dataToPdf, ['linkedin_url'], ''),
+        getSafe(dataToPdf, ['github_url'], ''),
+        getSafe(dataToPdf, ['website_url'], ''),
+      ].filter(Boolean).join(' | ');
+      if (contactInfo) {
+        doc.text(contactInfo, doc.internal.pageSize.getWidth() / 2, currentY, { align: 'center' });
+        currentY += 10;
+      }
+
+      const summary = getSafe(dataToPdf, ['summary'], ''); 
+      if (summary) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(t('pdf.summary', 'Summary'), margin, currentY);
+        currentY += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const splitSummary = doc.splitTextToSize(summary, doc.internal.pageSize.getWidth() - margin * 2);
+        doc.text(splitSummary, margin, currentY);
+        currentY += (splitSummary.length * 4) + 6;
+      }
+
+      const skills = getSafe(dataToPdf, ['skills'], []); 
+      if (Array.isArray(skills) && skills.length > 0) {
+        if (currentY > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); currentY = margin; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(t('pdf.skills', 'Skills'), margin, currentY);
+        currentY += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(skills.join(', '), margin, currentY, { maxWidth: doc.internal.pageSize.getWidth() - margin * 2 });
+        const skillLines = doc.splitTextToSize(skills.join(', '), doc.internal.pageSize.getWidth() - margin * 2).length;
+        currentY += (skillLines * 4) + 6;
+      }
+
+      const experience = getSafe(dataToPdf, ['work_experience'], []);
+      if (Array.isArray(experience) && experience.length > 0) {
+        if (currentY > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); currentY = margin; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(t('pdf.experience', 'Work Experience'), margin, currentY);
+        currentY += 2;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [[ t('pdf.exp.position', 'Position'), t('pdf.exp.company', 'Company'), t('pdf.exp.dates', 'Dates'), t('pdf.exp.description', 'Description') ]],
+          body: experience.map(exp => [
+            `${getSafe(exp, ['title'], '')}\n${getSafe(exp, ['location'], '')}`.trim(),
+            getSafe(exp, ['company'], ''),
+            getSafe(exp, ['dates'], ''),
+            getSafe(exp, ['description'], '') + (getSafe(exp, ['achievements'], []).length > 0 ? '\nAchievements: ' + getSafe(exp, ['achievements'], []).join(', ') : '')
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+          styles: { cellPadding: 2, fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 'auto' },
+          },
+          didDrawPage: (data) => {
+             currentY = data.cursor?.y ?? currentY; 
+          }
+        });
+        currentY += 6; 
+      }
+
+      const education = getSafe(dataToPdf, ['education'], []);
+      if (Array.isArray(education) && education.length > 0) {
+        if (currentY > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); currentY = margin; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(t('pdf.education', 'Education'), margin, currentY);
+        currentY += 2;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [[t('pdf.edu.degree', 'Degree'), t('pdf.edu.institution', 'Institution'), t('pdf.edu.dates', 'Dates')]],
+          body: education.map(edu => [
+            getSafe(edu, ['degree'], ''),
+            getSafe(edu, ['institution'], ''),
+            getSafe(edu, ['dates'], '')
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+          styles: { cellPadding: 2, fontSize: 9 },
+          didDrawPage: (data) => {
+             currentY = data.cursor?.y ?? currentY; 
+          }
+        });
+        currentY += 6;
+      }
+
+      const fileName = `${name.replace(/\s+/g, '_')}_Original_CV.pdf`;
+      doc.save(fileName);
+      logger.log('Original CV PDF generated and download triggered', { fileName });
+
+    } catch (pdfError: any) {
+       logger.error('Failed to generate PDF from original data', pdfError);
+       setError(t('pdf.errorGenerating', 'Failed to generate PDF. See console for details.'));
     }
   };
 
@@ -250,7 +403,7 @@ const ProfileEnhancer: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h1 className="text-2xl font-semibold mb-2 flex items-center">
           <Sparkles className="mr-2 h-6 w-6 text-indigo-600" />
@@ -270,7 +423,7 @@ const ProfileEnhancer: React.FC = () => {
                 id="cv-select"
                 className="w-full p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 value={selectedCV}
-                onChange={(e) => setSelectedCV(e.target.value)}
+                onChange={(e) => handleSelectCv(e.target.value)}
               >
                 <option value="" disabled>Select a CV</option>
                 {cvs.map((cv) => (
@@ -419,7 +572,6 @@ const ProfileEnhancer: React.FC = () => {
             </div>
           </div>
 
-          {/* Profile Score */}
           <div className="flex flex-wrap mb-8">
             <div className="w-full lg:w-1/3 px-4 mb-6 lg:mb-0">
               <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100 h-full">
@@ -487,7 +639,6 @@ const ProfileEnhancer: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Tab Content */}
                 {activeTab === 'keywords' && (
                   <div>
                     <h3 className="text-lg font-semibold mb-4 flex items-center">
@@ -690,7 +841,6 @@ const ProfileEnhancer: React.FC = () => {
             </div>
           </div>
 
-          {/* Competitive Advantage Section */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold mb-4 flex items-center">
               <Lightbulb className="mr-2 h-5 w-5 text-amber-500" />
