@@ -166,7 +166,12 @@ const ProfileEnhancer: React.FC = () => {
       console.log('Enhancement complete. Result:', result);
 
       setProgress(100);
-      setEnhancementResult(result);
+      if (result.success && result.enhancedData) {
+        setEnhancementResult(result.enhancedData);
+      } else {
+        setError(result.error || t('profileEnhancer.errors.enhancementApiFailed', 'Enhancement failed or returned invalid data.'));
+        setEnhancementResult(null);
+      }
     } catch (error) {
       console.error('Error enhancing profile:', error);
       setError('Error al mejorar el perfil: ' + (error instanceof Error ? error.message : 'Error de conexión con el servidor'));
