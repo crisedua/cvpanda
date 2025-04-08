@@ -59,7 +59,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { path: '/edit', label: t('nav.edit'), icon: FileText },
     { path: '/skillgap', label: t('nav.skillgap'), icon: Target },
     { path: '/profile-enhancer', label: t('nav.profileEnhancer'), icon: Briefcase },
-    { path: '/job-search', label: t('nav.jobSearch'), icon: Target },
   ];
 
   if (!user) {
