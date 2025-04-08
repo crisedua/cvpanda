@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle } from 'lucide-react';
 import { searchJobs, JobSearchResult } from '../lib/api';
@@ -15,18 +15,6 @@ export default function JobSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<JobSearchResult[]>([]);
-
-  // --- Placeholder: Fetch current CV data and pre-fill inputs ---
-  useEffect(() => {
-    // TODO: Replace with actual logic to get current CV data
-    const currentCvData = { job_title: 'Software Engineer', location: 'Santiago, Chile' }; // Dummy data
-    logger.log('Fetching current CV data (placeholder)', currentCvData);
-    if (currentCvData) {
-      setInterest(currentCvData.job_title || '');
-      setLocation(currentCvData.location || '');
-    }
-  }, []); // Run once on component mount
-  // ---------------------------------------------------------------
 
   const handleSearch = async () => {
     if (!interest || !location) {
