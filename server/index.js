@@ -9,7 +9,6 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { ApifyClient } = require('apify-client');
-const { createComponentLogger } = require('./utils/logger');
 
 // Initialize OpenAI client
 let openai;
@@ -1172,13 +1171,12 @@ app.get('/api/cvs', async (req, res) => {
 
 // --- Profile Enhancement Endpoint ---
 app.post('/api/enhance-profile', async (req, res) => {
-  const logger = createComponentLogger('API:enhance-profile'); // Assuming logger is available
   const { cvId, targetPlatform, industryFocus, careerLevel } = req.body;
 
-  logger.log('Received request to enhance profile', { cvId, targetPlatform, industryFocus, careerLevel });
+  console.log('[enhance-profile] Received request', { cvId, targetPlatform, industryFocus, careerLevel });
 
   if (!cvId || !targetPlatform || !industryFocus || !careerLevel) {
-    logger.warn('Missing required fields for enhancement');
+    console.warn('[enhance-profile] Missing required fields');
     return res.status(400).json({ success: false, error: 'Missing required fields (cvId, targetPlatform, industryFocus, careerLevel)' });
   }
 
@@ -1187,16 +1185,16 @@ app.post('/api/enhance-profile', async (req, res) => {
     // TODO: Implement Supabase fetch logic here
     const originalCvData = { /* ... fetched data ... */ }; 
     if (!originalCvData) {
-       logger.error('CV not found in database', { cvId });
+       console.error('[enhance-profile] CV not found in database', { cvId });
        return res.status(404).json({ success: false, error: 'Original CV not found' });
     }
-    logger.log('Original CV data fetched', { cvId });
+    console.log('[enhance-profile] Original CV data fetched', { cvId });
 
     // 2. Call OpenAI (or other service) to get enhancement suggestions
     // TODO: Implement the core enhancement logic here
     // This would involve creating a prompt with originalCvData, targetPlatform, etc.
     // and parsing the AI response into the ProfileEnhancementResult structure.
-    logger.log('Calling enhancement service...', { cvId });
+    console.log('[enhance-profile] Calling enhancement service...', { cvId });
     const enhancementResult = { 
       // --- DUMMY DATA - REPLACE WITH ACTUAL AI RESPONSE --- 
       profileScore: { current: 75, potential: 90, keyFactors: ['Added keywords', 'Improved summary'] },
@@ -1212,13 +1210,13 @@ app.post('/api/enhance-profile', async (req, res) => {
       metadata: { processedAt: new Date().toISOString(), targetPlatform, industryFocus, careerLevel }
       // --- END DUMMY DATA ---
     };
-    logger.log('Enhancement service responded', { cvId });
+    console.log('[enhance-profile] Enhancement service responded', { cvId });
 
     // 3. Send the result back to the frontend
     res.json({ success: true, enhancedData: enhancementResult });
 
   } catch (error) {
-    logger.error('Error during profile enhancement process', { cvId, error: error.message });
+    console.error('[enhance-profile] Error during enhancement process', { cvId, error: error.message });
     res.status(500).json({ success: false, error: 'Failed to enhance profile', details: error.message });
   }
 });
