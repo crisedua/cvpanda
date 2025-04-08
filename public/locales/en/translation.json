@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "home": "Home",
+    "edit": "Edit CV",
+    "skillgap": "Skill Gap",
+    "profileEnhancer": "Profile Enhancer",
+    "jobSearch": "Job Search",
+    "admin": "Admin",
+    "profile": "Profile",
+    "signout": "Sign Out"
+  },
+  "jobSearch": {
+    "title": "Job Search",
+    "interestLabel": "Keywords / Job Title",
+    "interestPlaceholder": "e.g., Software Engineer, Marketing Manager",
+    "locationLabel": "Location",
+    "locationPlaceholder": "e.g., Santiago, Chile",
+    "searchButton": "Search Jobs",
+    "searching": "Searching...",
+    "loadingResults": "Searching for relevant job openings...",
+    "resultsTitle": "Job Results",
+    "noResults": "No job postings found matching your criteria. Try broadening your search.",
+    "error": {
+      "missingFields": "Please enter both keywords/job title and location.",
+      "generic": "An error occurred while searching for jobs. Please try again.",
+      "exception": "An unexpected error occurred. Please check the console for details."
+    }
+  },
+  "error": {
+    "title": "Error!",
+    // ... other error keys
+  },
+  // ... rest of the file
+} 

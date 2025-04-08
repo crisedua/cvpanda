@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "edit": "Editar CV",
+    "skillgap": "Brecha Habilidades",
+    "profileEnhancer": "Mejorar Perfil",
+    "jobSearch": "Buscar Empleo",
+    "admin": "Admin",
+    "profile": "Perfil",
+    "signout": "Cerrar Sesión"
+  },
+  "jobSearch": {
+    "title": "Búsqueda de Empleo",
+    "interestLabel": "Palabras Clave / Cargo",
+    "interestPlaceholder": "Ej: Ingeniero de Software, Gerente Marketing",
+    "locationLabel": "Ubicación",
+    "locationPlaceholder": "Ej: Santiago, Chile",
+    "searchButton": "Buscar Empleos",
+    "searching": "Buscando...",
+    "loadingResults": "Buscando ofertas de empleo relevantes...",
+    "resultsTitle": "Resultados de Empleo",
+    "noResults": "No se encontraron ofertas de empleo que coincidan con tus criterios. Intenta ampliar tu búsqueda.",
+    "error": {
+      "missingFields": "Por favor, ingresa palabras clave/cargo y ubicación.",
+      "generic": "Ocurrió un error al buscar empleos. Por favor, intenta de nuevo.",
+      "exception": "Ocurrió un error inesperado. Revisa la consola para más detalles."
+    }
+  },
+  "error": {
+    "title": "¡Error!",
+    // ... other error keys
+  },
+  // ... rest of the file
+} 
