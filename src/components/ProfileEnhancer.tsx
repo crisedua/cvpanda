@@ -421,10 +421,10 @@ const ProfileEnhancer: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h1 className="text-2xl font-semibold mb-2 flex items-center">
           <Briefcase className="mr-2 h-6 w-6 text-indigo-600" />
-          CV Adaptation for Job Applications
+          {t('cvAdaptation.title')}
         </h1>
         <p className="text-gray-600 mb-6">
-          Optimize your CV for specific job applications by tailoring it to match the job requirements and highlight relevant skills and experience.
+          {t('cvAdaptation.description')}
         </p>
 
         {!enhancing && !enhancementResult && (
@@ -432,7 +432,7 @@ const ProfileEnhancer: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="cv-select">
-                  {t('profileOptimizer.selectCv')}
+                  {t('cvAdaptation.selectCv')}
                 </label>
                 <select
                   id="cv-select"
@@ -450,7 +450,7 @@ const ProfileEnhancer: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="job-title">
-                  Job Title*
+                  {t('cvAdaptation.jobTitle')}*
                 </label>
                 <div className="flex items-center">
                   <span className="text-gray-500 mr-2">
@@ -462,13 +462,13 @@ const ProfileEnhancer: React.FC = () => {
                     className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    placeholder="e.g. Senior Software Engineer"
+                    placeholder={t('cvAdaptation.jobTitlePlaceholder')}
                   />
                 </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="company-name">
-                  Company Name
+                  {t('cvAdaptation.companyName')}
                 </label>
                 <div className="flex items-center">
                   <span className="text-gray-500 mr-2">
@@ -480,30 +480,30 @@ const ProfileEnhancer: React.FC = () => {
                     className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Acme Corporation"
+                    placeholder={t('cvAdaptation.companyNamePlaceholder')}
                   />
                 </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="job-description">
-                  Job Description*
+                  {t('cvAdaptation.jobDescription')}*
                 </label>
                 <textarea
                   id="job-description"
                   className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[200px]"
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the full job description here..."
+                  placeholder={t('cvAdaptation.jobDescriptionPlaceholder')}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  For best results, include the full job description including required skills, qualifications, and responsibilities.
+                  {t('cvAdaptation.jobDescriptionHint')}
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2 text-gray-700 bg-blue-50 p-4 rounded-md">
               <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
               <p className="text-sm">
-                Our system will use GPT-4o Mini to analyze your CV and the job description, then create a tailored version of your CV optimized for this specific job application.
+                {t('cvAdaptation.aiNotice')}
               </p>
             </div>
             <div>
@@ -512,7 +512,7 @@ const ProfileEnhancer: React.FC = () => {
                 onClick={handleAdaptCV}
                 disabled={!selectedCV || !jobTitle || !jobDescription}
               >
-                Adapt CV for This Job
+                {t('cvAdaptation.adaptCv')}
               </button>
             </div>
           </div>
@@ -522,13 +522,13 @@ const ProfileEnhancer: React.FC = () => {
           <div className="bg-white rounded-lg p-8 my-6">
             <div className="flex flex-col items-center text-center">
               <h3 className="text-xl font-semibold mb-4">
-                Adapting your CV for the job application
+                {t('cvAdaptation.adapting')}
               </h3>
               <div className="w-full mt-4">
                 <ProgressBar progress={progress} />
               </div>
               <p className="text-gray-500 mt-4">
-                Our AI is analyzing your CV and job requirements to create a tailored version that highlights your most relevant experience and skills...
+                {t('cvAdaptation.adaptingProgress')}
               </p>
             </div>
           </div>
@@ -569,7 +569,7 @@ const ProfileEnhancer: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold">
-              Adapted CV for: {enhancementResult.jobTitle || jobTitle}
+              {t('cvAdaptation.resultTitle')} {enhancementResult.jobTitle || jobTitle}
             </h2>
             <div className="flex space-x-3">
               <button
@@ -577,13 +577,13 @@ const ProfileEnhancer: React.FC = () => {
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
               >
                 <FileDown className="mr-2 h-5 w-5" />
-                Download Adapted CV
+                {t('cvAdaptation.download')}
               </button>
               <button
                 onClick={handleNewAdaptation}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
-                Create New Adaptation
+                {t('cvAdaptation.newAdaptation')}
               </button>
             </div>
           </div>
@@ -593,7 +593,7 @@ const ProfileEnhancer: React.FC = () => {
           </div>
           
           <div className="mt-6 bg-blue-50 p-4 rounded-md">
-            <h3 className="text-lg font-semibold mb-2 text-blue-800">Key Adaptations Made</h3>
+            <h3 className="text-lg font-semibold mb-2 text-blue-800">{t('cvAdaptation.keyAdaptations')}</h3>
             <ul className="list-disc pl-5 space-y-2">
               {enhancementResult.profileScore?.keyFactors && enhancementResult.profileScore.keyFactors.length > 0 && 
                 enhancementResult.profileScore.keyFactors.map((factor, index) => (
