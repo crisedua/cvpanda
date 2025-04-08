@@ -459,14 +459,14 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="flex items-center justify-around mt-4">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-indigo-600">
-                      {enhancementResult.profileScore.current}%
+                      {enhancementResult.profileScore?.current || 0}%
                     </div>
                     <div className="text-sm text-gray-600">{t('profileEnhancer.current')}</div>
                   </div>
                   <div className="text-indigo-500">→</div>
                   <div className="text-center">
                     <div className="text-3xl font-bold text-green-600">
-                      {enhancementResult.profileScore.potential}%
+                      {enhancementResult.profileScore?.potential || 0}%
                     </div>
                     <div className="text-sm text-gray-600">{t('profileEnhancer.potential')}</div>
                   </div>
@@ -474,9 +474,11 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="mt-4">
                   <h4 className="font-medium text-indigo-800 mb-2">{t('profileEnhancer.keyFactors')}</h4>
                   <ul className="list-disc pl-5 text-sm">
-                    {enhancementResult.profileScore.keyFactors.map((factor, index) => (
-                      <li key={index} className="mb-1 text-gray-700">{factor}</li>
-                    ))}
+                    {enhancementResult.profileScore?.keyFactors && enhancementResult.profileScore.keyFactors.length > 0 && 
+                      enhancementResult.profileScore.keyFactors.map((factor, index) => (
+                        <li key={index} className="mb-1 text-gray-700">{factor}</li>
+                      ))
+                    }
                   </ul>
                 </div>
               </div>
@@ -524,28 +526,30 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.keywordAnalysis')}
                     </h3>
                     <div className="space-y-4">
-                      {enhancementResult.keywordAnalysis.map((keyword, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-md mb-2">{keyword.keyword}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              keyword.relevance > 80 ? 'bg-green-100 text-green-800' : 
-                              keyword.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {t('profileEnhancer.relevance')}: {keyword.relevance}%
-                            </span>
+                      {enhancementResult.keywordAnalysis && enhancementResult.keywordAnalysis.length > 0 && 
+                        enhancementResult.keywordAnalysis.map((keyword, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-semibold text-md mb-2">{keyword.keyword}</h4>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                keyword.relevance > 80 ? 'bg-green-100 text-green-800' : 
+                                keyword.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {t('profileEnhancer.relevance')}: {keyword.relevance}%
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">{t('profileEnhancer.placement')}: </span>
+                              {keyword.placement}
+                            </p>
+                            <p className="text-sm text-gray-700 mt-2">
+                              <span className="font-medium">{t('profileEnhancer.recommendedUsage')}: </span>
+                              {keyword.recommendedUsage}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">{t('profileEnhancer.placement')}: </span>
-                            {keyword.placement}
-                          </p>
-                          <p className="text-sm text-gray-700 mt-2">
-                            <span className="font-medium">{t('profileEnhancer.recommendedUsage')}: </span>
-                            {keyword.recommendedUsage}
-                          </p>
-                        </div>
-                      ))}
+                        ))
+                      }
                     </div>
                   </div>
                 )}
@@ -557,29 +561,31 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.sectionEnhancements')}
                     </h3>
                     <div className="space-y-6">
-                      {enhancementResult.sectionEnhancements.map((enhancement, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <h4 className="font-semibold text-lg mb-2 text-indigo-700">{enhancement.section}</h4>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.currentContent')}</p>
-                              <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
-                                {enhancement.currentContent}
+                      {enhancementResult.sectionEnhancements && enhancementResult.sectionEnhancements.length > 0 && 
+                        enhancementResult.sectionEnhancements.map((enhancement, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <h4 className="font-semibold text-lg mb-2 text-indigo-700">{enhancement.section}</h4>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.currentContent')}</p>
+                                <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
+                                  {enhancement.currentContent}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-xs text-green-500 mb-1">{t('profileEnhancer.enhancedContent')}</p>
+                                <div className="bg-green-50 p-3 rounded border border-green-200 text-sm">
+                                  {enhancement.enhancedContent}
+                                </div>
                               </div>
                             </div>
                             <div>
-                              <p className="text-xs text-green-500 mb-1">{t('profileEnhancer.enhancedContent')}</p>
-                              <div className="bg-green-50 p-3 rounded border border-green-200 text-sm">
-                                {enhancement.enhancedContent}
-                              </div>
+                              <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.rationale')}</p>
+                              <p className="text-sm text-gray-700">{enhancement.rationale}</p>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.rationale')}</p>
-                            <p className="text-sm text-gray-700">{enhancement.rationale}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      }
                     </div>
                   </div>
                 )}
@@ -591,24 +597,26 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.industryTrends')}
                     </h3>
                     <div className="space-y-4">
-                      {enhancementResult.industryTrends.map((trend, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-md mb-2">{trend.trend}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              trend.relevance > 80 ? 'bg-green-100 text-green-800' : 
-                              trend.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {t('profileEnhancer.relevance')}: {trend.relevance}%
-                            </span>
+                      {enhancementResult.industryTrends && enhancementResult.industryTrends.length > 0 && 
+                        enhancementResult.industryTrends.map((trend, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-semibold text-md mb-2">{trend.trend}</h4>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                trend.relevance > 80 ? 'bg-green-100 text-green-800' : 
+                                trend.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {t('profileEnhancer.relevance')}: {trend.relevance}%
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">{t('profileEnhancer.implementation')}: </span>
+                              {trend.implementation}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">{t('profileEnhancer.implementation')}: </span>
-                            {trend.implementation}
-                          </p>
-                        </div>
-                      ))}
+                        ))
+                      }
                     </div>
                   </div>
                 )}
@@ -689,43 +697,51 @@ const ProfileEnhancer: React.FC = () => {
                       <Calendar className="mr-2 h-5 w-5 text-indigo-600" />
                       Action Plan
                     </h3>
-                    <div className="space-y-6">
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                          Immediate Actions
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.immediate.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
+                    {enhancementResult.actionPlan && (
+                      <div className="space-y-6">
+                        {enhancementResult.actionPlan.immediate && enhancementResult.actionPlan.immediate.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
+                              <span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                              Immediate Actions
+                            </h4>
+                            <ul className="space-y-2 pl-5">
+                              {enhancementResult.actionPlan.immediate.map((action, i) => (
+                                <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {enhancementResult.actionPlan.shortTerm && enhancementResult.actionPlan.shortTerm.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
+                              <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                              Short-Term Actions (1 month)
+                            </h4>
+                            <ul className="space-y-2 pl-5">
+                              {enhancementResult.actionPlan.shortTerm.map((action, i) => (
+                                <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {enhancementResult.actionPlan.longTerm && enhancementResult.actionPlan.longTerm.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
+                              <span className="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-2"></span>
+                              Long-Term Actions (3-6 months)
+                            </h4>
+                            <ul className="space-y-2 pl-5">
+                              {enhancementResult.actionPlan.longTerm.map((action, i) => (
+                                <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                          Short-Term Actions (1 month)
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.shortTerm.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-2"></span>
-                          Long-Term Actions (3-6 months)
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.longTerm.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
