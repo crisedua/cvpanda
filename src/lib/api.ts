@@ -2,6 +2,7 @@ import { createComponentLogger } from './logger';
 import { JobScanFilter, ScannedJob } from '../types/index';
 import { extractTextFromDOCX } from './documentParser'; // Assuming it's exported from here
 import { supabase } from './supabase';
+import { ParsedCVData, ProfileEnhancementResult } from '../types'; // Ensure types are imported
 
 const logger = createComponentLogger('API');
 
@@ -464,59 +465,63 @@ export const optimizeProfile = async (
   }
 };
 
-// Enhance profile with advanced keyword analytics and industry trends
+// --- Profile Enhancement ---
 export const enhanceProfile = async (
-  cvId: string,
-  targetPlatform: string,
+  cvId: string, 
+  targetPlatform: 'linkedin' | 'resume',
   industryFocus: string,
-  careerLevel: string,
-  enhancementOptions?: Record<string, any>
-) => {
+  careerLevel: string
+): Promise<{ success: boolean; enhancedData?: ProfileEnhancementResult; error?: string }> => {
+  const logger = createComponentLogger('API:enhanceProfile');
+  logger.log('Starting profile enhancement call', { cvId, targetPlatform, industryFocus, careerLevel });
+
+  if (!API_BASE_URL) {
+    logger.error('API_BASE_URL is not configured');
+    return { success: false, error: 'API URL is not configured.' };
+  }
+  if (!cvId) {
+     logger.error('CV ID is required for enhancement');
+     return { success: false, error: 'CV ID is required.' };
+  }
+
   try {
-    console.log('Enhancing profile with parameters:', { 
-      cvId, 
-      targetPlatform, 
-      industryFocus,
-      careerLevel,
-      apiUrl: API_BASE_URL
-    });
-    
     const response = await fetch(`${API_BASE_URL}/api/enhance-profile`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({ 
         cvId, 
         targetPlatform, 
         industryFocus, 
-        careerLevel,
-        enhancementOptions
+        careerLevel 
       }),
     });
-    
+
     if (!response.ok) {
-      console.error('Error response from enhance-profile endpoint:', {
-        status: response.status,
-        statusText: response.statusText
-      });
-      
-      let errorMessage;
+      let errorBody = { error: `Server error ${response.status}` };
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || `Error: ${response.status} ${response.statusText}`;
-      } catch (e) {
-        errorMessage = `Error: ${response.status} ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
+        errorBody = await response.json();
+      } catch (e) { /* Ignore if response is not JSON */ }
+      logger.error(`Enhancement API call failed: ${response.status}`, errorBody);
+      throw new Error(errorBody.error || `Server returned ${response.status}`);
     }
-    
+
     const data = await response.json();
-    console.log('Successfully enhanced profile, got data:', { dataSize: JSON.stringify(data).length });
-    return data;
-  } catch (error) {
-    console.error('Error enhancing profile:', error);
-    throw error;
+    
+    // Validate success and presence of enhancedData
+    if (data.success && data.enhancedData) {
+        logger.log('Profile enhancement successful', { cvId });
+        return { success: true, enhancedData: data.enhancedData };
+    } else {
+        logger.error('Enhancement API returned success=false or missing data', data);
+        return { success: false, error: data.error || 'Invalid response from enhancement API' };
+    }
+
+  } catch (error: any) {
+    logger.error(`Exception during profile enhancement fetch: ${error.message}`);
+    return { success: false, error: error.message || 'Failed to fetch enhancement results' };
   }
 };
 
