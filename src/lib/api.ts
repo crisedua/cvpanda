@@ -1091,4 +1091,61 @@ export const uploadAndParseCV = async (file: File) => {
       error: error instanceof Error ? error.message : 'Unknown error during CV processing'
     };
   }
+};
+
+// --- Job Search ---
+export interface JobSearchResult {
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  link: string;
+  source: string; // e.g., 'Trabajando.com'
+}
+
+export interface JobSearchResponse {
+  success: boolean;
+  jobs?: JobSearchResult[];
+  error?: string;
+}
+
+export const searchJobs = async (interest: string, location: string): Promise<JobSearchResponse> => {
+  const logger = createComponentLogger('API:searchJobs');
+  logger.log(`Searching jobs for interest="${interest}", location="${location}"`);
+
+  if (!API_BASE_URL) {
+    logger.error('API_BASE_URL is not configured');
+    return { success: false, error: 'API URL is not configured.' };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/search-jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ interest, location }),
+      // Add timeout? Consider long scraping times
+    });
+
+    if (!response.ok) {
+      let errorBody;
+      try {
+        errorBody = await response.json();
+      } catch (e) {
+        errorBody = { error: response.statusText };
+      }
+      logger.error(`Server error ${response.status}: ${JSON.stringify(errorBody)}`);
+      throw new Error(errorBody.error || `Server returned ${response.status}`);
+    }
+
+    const data: JobSearchResponse = await response.json();
+    logger.log(`Received ${data.jobs?.length || 0} job results`);
+    return data;
+
+  } catch (error: any) {
+    logger.error(`Error during job search fetch: ${error.message}`);
+    return { success: false, error: error.message || 'Failed to fetch job search results' };
+  }
 }; 

@@ -16,6 +16,7 @@ import ProfileEnhancer from './components/ProfileEnhancer';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoadingScreen from './components/LoadingScreen';
+import JobSearch from './components/JobSearch';
 import './i18n';
 
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) => {
@@ -190,6 +191,16 @@ const AppRoutes = () => {
           <ProtectedRoute adminOnly>
             <React.Suspense fallback={<LoadingScreen />}>
               <AdminDashboard />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/job-search"
+        element={
+          <ProtectedRoute>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <JobSearch />
             </React.Suspense>
           </ProtectedRoute>
         }

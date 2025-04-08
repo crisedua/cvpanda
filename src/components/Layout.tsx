@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { createComponentLogger } from '../lib/logger';
 import Logo from './Logo';
+import { NavLink } from 'react-router-dom';
 
 const logger = createComponentLogger('Layout');
 
@@ -58,6 +59,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { path: '/edit', label: t('nav.edit'), icon: FileText },
     { path: '/skillgap', label: t('nav.skillgap'), icon: Target },
     { path: '/profile-enhancer', label: t('nav.profileEnhancer'), icon: Briefcase },
+    { path: '/job-search', label: t('nav.jobSearch'), icon: Target },
   ];
 
   if (!user) {
