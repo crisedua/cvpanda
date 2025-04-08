@@ -733,48 +733,56 @@ const ProfileEnhancer: React.FC = () => {
           </div>
 
           {/* Competitive Advantage Section */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <Lightbulb className="mr-2 h-5 w-5 text-amber-500" />
-              Competitive Advantage Strategy
-            </h3>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-              <div className="mb-4">
-                <h4 className="font-medium text-amber-800 mb-2">Differentiation Strategy</h4>
-                <p className="text-gray-700">{enhancementResult.competitiveAdvantage.differentiationStrategy}</p>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-amber-800 mb-2">Unique Selling Points</h4>
-                  <ul className="space-y-2">
-                    {enhancementResult.competitiveAdvantage.uniqueSellingPoints.map((point, i) => (
-                      <li key={i} className="flex items-start">
-                        <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-700">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+          {enhancementResult.competitiveAdvantage && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <Lightbulb className="mr-2 h-5 w-5 text-amber-500" />
+                Competitive Advantage Strategy
+              </h3>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+                {enhancementResult.competitiveAdvantage.differentiationStrategy && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-amber-800 mb-2">Differentiation Strategy</h4>
+                    <p className="text-gray-700">{enhancementResult.competitiveAdvantage.differentiationStrategy}</p>
+                  </div>
+                )}
                 
-                <div>
-                  <h4 className="font-medium text-amber-800 mb-2">Emerging Opportunities</h4>
-                  <ul className="space-y-2">
-                    {enhancementResult.competitiveAdvantage.emergingOpportunities.map((opportunity, i) => (
-                      <li key={i} className="flex items-start">
-                        <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                        <span className="text-gray-700">{opportunity}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {enhancementResult.competitiveAdvantage.uniqueSellingPoints && enhancementResult.competitiveAdvantage.uniqueSellingPoints.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-amber-800 mb-2">Unique Selling Points</h4>
+                      <ul className="space-y-2">
+                        {enhancementResult.competitiveAdvantage.uniqueSellingPoints.map((point, i) => (
+                          <li key={i} className="flex items-start">
+                            <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="text-gray-700">{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {enhancementResult.competitiveAdvantage.emergingOpportunities && enhancementResult.competitiveAdvantage.emergingOpportunities.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-amber-800 mb-2">Emerging Opportunities</h4>
+                      <ul className="space-y-2">
+                        {enhancementResult.competitiveAdvantage.emergingOpportunities.map((opportunity, i) => (
+                          <li key={i} className="flex items-start">
+                            <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                            <span className="text-gray-700">{opportunity}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
