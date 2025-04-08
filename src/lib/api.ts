@@ -519,9 +519,10 @@ export const enhanceProfile = async (
         return { success: false, error: data.error || 'Invalid response from enhancement API' };
     }
 
-  } catch (error: any) {
-    logger.error(`Exception during profile enhancement fetch: ${error.message}`);
-    return { success: false, error: error.message || 'Failed to fetch enhancement results' };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch enhancement results';
+    logger.error(`Exception during profile enhancement fetch: ${errorMessage}`);
+    return { success: false, error: errorMessage };
   }
 };
 
