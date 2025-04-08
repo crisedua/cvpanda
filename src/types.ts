@@ -100,6 +100,8 @@ export interface ProfileEnhancementResult {
   atsOptimization: AtsOptimization;
   competitiveAdvantage: CompetitiveAdvantage;
   actionPlan: ActionPlan;
+  jobTitle?: string;
+  adaptedCV?: string;
   metadata?: {
     processedAt: string;
     targetPlatform: string;
