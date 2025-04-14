@@ -98,25 +98,25 @@ const SkillGapAnalyzer = () => {
       
       console.log('[SkillGapAnalyzer] Received CV data:', {
         count: data?.length,
-        sources: data?.map((cv: CV) => cv.source || 'unknown').join(', '),
-        dataTypes: data?.map((cv: CV) => {
+        sources: data?.map(cv => cv.source || 'unknown').join(', '),
+        dataTypes: data?.map(cv => {
           return {
             id: cv.id,
-            hasParseData: Boolean(cv.parsed_data),
+            filename: cv.filename,
+            hasParsedData: !!cv.parsedData,
+            hasMetadata: !!cv.metadata
           };
-        }),
+        })
       });
       
-      if (data) {
-        setCvs(data);
-      }
+      setCvs(data || []);
       
       // Reset selected CV if it's no longer in the list
-      if (selectedCV && !data?.find((cv: CV) => cv.id === selectedCV.id)) {
+      if (selectedCV && !data?.find(cv => cv.id === selectedCV.id)) {
         setSelectedCV(null);
       }
-    } catch (error) {
-      console.error('Error fetching CVs:', error);
+    } catch (err) {
+      console.error('[SkillGapAnalyzer] Error fetching CVs:', err);
       setError(t('errors.loadCvs'));
     } finally {
       setLoading(false);
@@ -159,50 +159,28 @@ const SkillGapAnalyzer = () => {
     setAnalyzing(true);
     setProgress(0);
 
-    // Create an AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 45000); // 45 second timeout
-
     try {
-      // Start progress animation with adaptive speed
+      // Start progress animation
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
-          // Slow down progress as it gets higher to manage expectations
           if (prev >= 90) {
-            return prev + 0.5; // Slower progress at the end
-          } else if (prev >= 70) {
-            return prev + 1;
-          } else if (prev >= 50) {
-            return prev + 2;
-          } else {
-            return prev + 5; // Faster at the beginning
+            clearInterval(progressInterval);
+            return prev;
           }
+          return prev + 10;
         });
       }, 1000);
 
-      // Call API to analyze skill gaps with timeout
-      const result = await analyzeSkillGaps(selectedCV.id, jobDescription, { signal: controller.signal });
+      // Call API to analyze skill gaps
+      const result = await analyzeSkillGaps(selectedCV.id, jobDescription);
       
       // Complete progress and show results
       clearInterval(progressInterval);
-      clearTimeout(timeoutId);
       setProgress(100);
       setAnalysisResult(result);
       setCurrentView('results');
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      
-      // Type guard for Error objects
-      const errorMessage = error instanceof Error ? error.message : t('skillGap.analysisFailed');
-      
-      // Check if it's an abort error (timeout)
-      if (error instanceof Error && error.name === 'AbortError') {
-        setError(t('skillGap.timeout') || 'The analysis took too long. Please try again or use a shorter job description.');
-      } else {
-        setError(errorMessage);
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('skillGap.analysisFailed'));
     } finally {
       setAnalyzing(false);
     }
@@ -313,7 +291,7 @@ const SkillGapAnalyzer = () => {
                             {cv.parsed_data?.personal?.name || cv.filename}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {formatDate(cv.created_at)}
+                            {formatDate(cv.created_at || cv.createdAt)}
                           </p>
                         </div>
                       </div>
