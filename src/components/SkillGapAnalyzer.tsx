@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { 
   FileText, Upload, Search, AlertCircle, 
   CheckCircle, XCircle, Target, Book, Award,
-  Lightbulb, ArrowRight, Loader2, Link, User
+  Lightbulb, ArrowRight, Loader2, Link, User, ExternalLink, Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,6 +62,13 @@ interface SkillGapAnalysisResult {
   keywordOptimization: KeywordOptimization[];
   industryInsights: string;
   summary: string;
+  recommendations?: {
+    title: string;
+    description: string;
+    type: string;
+    timeToAcquire: string;
+    link?: string;
+  }[];
 }
 
 const SkillGapAnalyzer = () => {
@@ -323,7 +330,7 @@ const SkillGapAnalyzer = () => {
                   {t('skillGap.selectCV')}
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {cvs.map((cv) => (
+                  {cvs.map((cv: CV) => (
                     <div
                       key={cv.id}
                       className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
@@ -340,7 +347,7 @@ const SkillGapAnalyzer = () => {
                             {cv.parsed_data?.personal?.name || cv.filename}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {formatDate(cv.created_at || cv.createdAt)}
+                            {formatDate(cv.created_at)}
                           </p>
                         </div>
                       </div>
@@ -546,169 +553,217 @@ const SkillGapAnalyzer = () => {
                       </div>
 
                       {/* Actionable Plan */}
-                      <div className="mb-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
-                          {t('skillGap.actionablePlan')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.shortTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
-                                </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, index) => (
-                                      <div key={index} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        <a
-                                          href={resource.link}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-indigo-600 hover:text-indigo-800"
-                                        >
-                                          {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
-                                        </a>
+                      {analysisResult.actionablePlan ? (
+                        <>
+                          <div className="mb-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                              {t('skillGap.actionablePlan')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.shortTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, index) => (
+                                          <div key={index} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            <a
+                                              href={resource.link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-indigo-600 hover:text-indigo-800"
+                                            >
+                                              {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                            </a>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
 
-                      {/* Medium-term Action Plan */}
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Target className="h-5 w-5 mr-2 text-blue-500" />
-                          {t('skillGap.mediumTerm')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.mediumTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
+                          {/* Medium-term Action Plan */}
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Target className="h-5 w-5 mr-2 text-blue-500" />
+                              {t('skillGap.mediumTerm')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.mediumTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, idx) => (
+                                          <div key={idx} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            {resource.link && (
+                                              <a
+                                                href={resource.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-indigo-600 hover:text-indigo-800"
+                                              >
+                                                {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                              </a>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, idx) => (
-                                      <div key={idx} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        {resource.link && (
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Long-term Action Plan */}
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Award className="h-5 w-5 mr-2 text-purple-500" />
+                              {t('skillGap.longTerm')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.longTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, idx) => (
+                                          <div key={idx} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            {resource.link && (
+                                              <a
+                                                href={resource.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-indigo-600 hover:text-indigo-800"
+                                              >
+                                                {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                              </a>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        /* Show Recommendations if available instead of actionablePlan */
+                        analysisResult.recommendations && (
+                          <div className="mb-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                              {t('skillGap.recommendations')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.recommendations.map((recommendation, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-gray-900">{recommendation.title}</h4>
+                                      <p className="text-gray-600 mt-1">{recommendation.description}</p>
+                                      <div className="mt-2 flex items-center text-sm">
+                                        <span className="text-indigo-600 mr-2">
+                                          {recommendation.type === 'course' && <Book className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'certification' && <Award className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'project' && <Lightbulb className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'experience' && <Briefcase className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type}
+                                        </span>
+                                        <span className="text-gray-500">• {recommendation.timeToAcquire}</span>
+                                        {recommendation.link && (
                                           <a
-                                            href={resource.link}
+                                            href={recommendation.link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-indigo-600 hover:text-indigo-800"
+                                            className="ml-auto text-indigo-600 hover:text-indigo-800"
                                           >
-                                            {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                            <ExternalLink className="h-4 w-4" />
                                           </a>
                                         )}
                                       </div>
-                                    ))}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
+                        )
+                      )}
 
-                      {/* Long-term Action Plan */}
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Award className="h-5 w-5 mr-2 text-purple-500" />
-                          {t('skillGap.longTerm')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.longTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
+                      {/* Keyword Optimization */}
+                      {analysisResult.keywordOptimization && analysisResult.keywordOptimization.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                            <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                            {t('skillGap.keywordOptimizations')}
+                          </h3>
+                          <div className="space-y-3">
+                            {analysisResult.keywordOptimization.map((keyword, index) => (
+                              <div key={index} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                <div className="flex items-center">
+                                  <span className="text-amber-800">{keyword.original}</span>
+                                  <ArrowRight className="h-4 w-4 mx-2 text-amber-500" />
+                                  <span className="text-amber-800 font-medium">{keyword.suggested}</span>
                                 </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, idx) => (
-                                      <div key={idx} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        {resource.link && (
-                                          <a
-                                            href={resource.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-indigo-600 hover:text-indigo-800"
-                                          >
-                                            {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
-                                          </a>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
+                                <p className="text-sm text-amber-700 mt-1">{keyword.reason}</p>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Keyword Optimizations */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
-                          {t('skillGap.keywordOptimizations')}
-                        </h3>
-                        <div className="space-y-3">
-                          {analysisResult.keywordOptimization.map((keyword, index) => (
-                            <div key={index} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                              <div className="flex items-center">
-                                <span className="text-amber-800">{keyword.original}</span>
-                                <ArrowRight className="h-4 w-4 mx-2 text-amber-500" />
-                                <span className="text-amber-800 font-medium">{keyword.suggested}</span>
-                              </div>
-                              <p className="text-sm text-amber-700 mt-1">{keyword.reason}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </motion.div>
@@ -818,169 +873,217 @@ const SkillGapAnalyzer = () => {
                       </div>
 
                       {/* Actionable Plan */}
-                      <div className="mb-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
-                          {t('skillGap.actionablePlan')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.shortTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
-                                </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, index) => (
-                                      <div key={index} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        <a
-                                          href={resource.link}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-indigo-600 hover:text-indigo-800"
-                                        >
-                                          {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                          {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
-                                        </a>
+                      {analysisResult.actionablePlan ? (
+                        <>
+                          <div className="mb-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                              {t('skillGap.actionablePlan')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.shortTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, index) => (
+                                          <div key={index} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            <a
+                                              href={resource.link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-indigo-600 hover:text-indigo-800"
+                                            >
+                                              {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                              {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                            </a>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
 
-                      {/* Medium-term Action Plan */}
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Target className="h-5 w-5 mr-2 text-blue-500" />
-                          {t('skillGap.mediumTerm')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.mediumTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
+                          {/* Medium-term Action Plan */}
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Target className="h-5 w-5 mr-2 text-blue-500" />
+                              {t('skillGap.mediumTerm')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.mediumTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, idx) => (
+                                          <div key={idx} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            {resource.link && (
+                                              <a
+                                                href={resource.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-indigo-600 hover:text-indigo-800"
+                                              >
+                                                {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                              </a>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, idx) => (
-                                      <div key={idx} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        {resource.link && (
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Long-term Action Plan */}
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Award className="h-5 w-5 mr-2 text-purple-500" />
+                              {t('skillGap.longTerm')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.actionablePlan.longTerm?.map((item, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="mr-3">
+                                      <h4 className="font-medium text-gray-900">{item.action}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {item.timeframe}
+                                      </p>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-gray-900 mb-2">
+                                        {t('skillGap.resources')}
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {item.resources.map((resource, idx) => (
+                                          <div key={idx} className="flex items-center">
+                                            <span className="text-gray-500 mr-2">{resource.name}</span>
+                                            {resource.link && (
+                                              <a
+                                                href={resource.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-indigo-600 hover:text-indigo-800"
+                                              >
+                                                {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
+                                                {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                              </a>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        /* Show Recommendations if available instead of actionablePlan */
+                        analysisResult.recommendations && (
+                          <div className="mb-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                              <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                              {t('skillGap.recommendations')}
+                            </h3>
+                            <div className="space-y-4">
+                              {analysisResult.recommendations.map((recommendation, index) => (
+                                <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <div className="flex items-start">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-gray-900">{recommendation.title}</h4>
+                                      <p className="text-gray-600 mt-1">{recommendation.description}</p>
+                                      <div className="mt-2 flex items-center text-sm">
+                                        <span className="text-indigo-600 mr-2">
+                                          {recommendation.type === 'course' && <Book className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'certification' && <Award className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'project' && <Lightbulb className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type === 'experience' && <Briefcase className="h-4 w-4 inline mr-1" />}
+                                          {recommendation.type}
+                                        </span>
+                                        <span className="text-gray-500">• {recommendation.timeToAcquire}</span>
+                                        {recommendation.link && (
                                           <a
-                                            href={resource.link}
+                                            href={recommendation.link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-indigo-600 hover:text-indigo-800"
+                                            className="ml-auto text-indigo-600 hover:text-indigo-800"
                                           >
-                                            {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
+                                            <ExternalLink className="h-4 w-4" />
                                           </a>
                                         )}
                                       </div>
-                                    ))}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
+                        )
+                      )}
 
-                      {/* Long-term Action Plan */}
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Award className="h-5 w-5 mr-2 text-purple-500" />
-                          {t('skillGap.longTerm')}
-                        </h3>
-                        <div className="space-y-4">
-                          {analysisResult.actionablePlan.longTerm.map((item, index) => (
-                            <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                              <div className="flex items-start">
-                                <div className="mr-3">
-                                  <h4 className="font-medium text-gray-900">{item.action}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.timeframe}
-                                  </p>
+                      {/* Keyword Optimization */}
+                      {analysisResult.keywordOptimization && analysisResult.keywordOptimization.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                            <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                            {t('skillGap.keywordOptimizations')}
+                          </h3>
+                          <div className="space-y-3">
+                            {analysisResult.keywordOptimization.map((keyword, index) => (
+                              <div key={index} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                <div className="flex items-center">
+                                  <span className="text-amber-800">{keyword.original}</span>
+                                  <ArrowRight className="h-4 w-4 mx-2 text-amber-500" />
+                                  <span className="text-amber-800 font-medium">{keyword.suggested}</span>
                                 </div>
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {t('skillGap.resources')}
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {item.resources.map((resource, idx) => (
-                                      <div key={idx} className="flex items-center">
-                                        <span className="text-gray-500 mr-2">{resource.name}</span>
-                                        {resource.link && (
-                                          <a
-                                            href={resource.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-indigo-600 hover:text-indigo-800"
-                                          >
-                                            {resource.type === 'course' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'certification' && <Award className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'project' && <Lightbulb className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'book' && <Book className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'practice' && <Target className="h-4 w-4 mr-1" />}
-                                            {resource.type === 'mentorship' && <User className="h-4 w-4 mr-1" />}
-                                          </a>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
+                                <p className="text-sm text-amber-700 mt-1">{keyword.reason}</p>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Keyword Optimizations */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
-                          {t('skillGap.keywordOptimizations')}
-                        </h3>
-                        <div className="space-y-3">
-                          {analysisResult.keywordOptimization.map((keyword, index) => (
-                            <div key={index} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                              <div className="flex items-center">
-                                <span className="text-amber-800">{keyword.original}</span>
-                                <ArrowRight className="h-4 w-4 mx-2 text-amber-500" />
-                                <span className="text-amber-800 font-medium">{keyword.suggested}</span>
-                              </div>
-                              <p className="text-sm text-amber-700 mt-1">{keyword.reason}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      )}
 
                       {/* Industry Insights */}
                       <div className="mt-8 p-5 bg-blue-50 rounded-lg">
