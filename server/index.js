@@ -1221,6 +1221,119 @@ app.post('/api/enhance-profile', async (req, res) => {
   }
 });
 
+// Analyze skill gaps between CV and job description
+app.post('/api/analyze-skill-gaps', async (req, res) => {
+  try {
+    console.log('Analyze skill gaps endpoint called');
+    const { cvId, jobDescription } = req.body;
+    
+    if (!cvId) {
+      return res.status(400).json({ error: 'Missing CV ID' });
+    }
+    
+    if (!jobDescription || jobDescription.trim() === '') {
+      return res.status(400).json({ error: 'Missing or empty job description' });
+    }
+    
+    // Fetch the CV from Supabase
+    const { data: cv, error: cvError } = await supabase
+      .from('parsed_cvs')  // Use parsed_cvs table instead of cvs
+      .select('*')
+      .eq('id', cvId)
+      .single();
+    
+    if (cvError) {
+      console.error('Error fetching CV:', cvError);
+      return res.status(404).json({ error: 'CV not found' });
+    }
+    
+    // Extract CV content - use the appropriate structure based on your DB
+    const cvContent = {
+      name: cv.name,
+      email: cv.email,
+      phone: cv.phone,
+      location: cv.location,
+      job_title: cv.job_title,
+      summary: cv.summary,
+      skills: cv.skills || [],
+      work_experience: cv.work_experience || [],
+      education: cv.education || []
+    };
+    
+    // Prepare prompt for OpenAI
+    const systemPrompt = `You are an expert career advisor specializing in skill gap analysis. 
+    Analyze the following CV and job description to identify matching skills, missing skills, and provide recommendations.`;
+    
+    const userPrompt = `
+    # CV Information
+    ${JSON.stringify(cvContent, null, 2)}
+    
+    # Job Description
+    ${jobDescription}
+    
+    Perform a detailed skill gap analysis between the CV and the job description. 
+    Return a JSON object with the following structure:
+    {
+      "matchPercentage": number, // overall match percentage (0-100)
+      "matchedSkills": [
+        {
+          "name": string, // name of the skill
+          "relevance": "high" | "medium" | "low", // relevance to the job
+          "description": string // brief explanation of how this skill matches
+        }
+      ],
+      "missingSkills": [
+        {
+          "name": string, // name of the missing skill
+          "importance": "critical" | "important" | "nice-to-have", // importance for the job
+          "description": string // explanation of why this skill is important
+        }
+      ],
+      "recommendations": [
+        {
+          "type": "course" | "certification" | "project" | "experience", // type of recommendation
+          "title": string, // title of the recommendation
+          "description": string, // description of the recommendation
+          "link": string, // optional link to resource (can be empty if not applicable)
+          "timeToAcquire": string // estimated time to acquire this skill
+        }
+      ],
+      "keywordOptimization": [
+        {
+          "original": string, // original text or wording in CV
+          "suggested": string, // suggested improvement
+          "reason": string // reason for the change
+        }
+      ],
+      "summary": string // overall summary of the analysis
+    }`;
+    
+    // Call OpenAI
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview', // or any available model that fits your needs
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    });
+    
+    // Parse the response
+    const result = JSON.parse(completion.choices[0].message.content);
+    
+    // Return the analysis result
+    return res.json({ success: true, result });
+    
+  } catch (error) {
+    console.error('Error analyzing skill gaps:', error);
+    return res.status(500).json({ 
+      error: 'Failed to analyze skill gaps', 
+      details: error.message 
+    });
+  }
+});
+
 // Enhanced Server Startup Logging
 const PORT = process.env.PORT || 3001;
 console.log(`Attempting to start server on port ${PORT}...`);
