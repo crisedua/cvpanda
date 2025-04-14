@@ -29,43 +29,13 @@ const ProfileEnhancer: React.FC = () => {
   const [enhancing, setEnhancing] = useState<boolean>(false);
   const [selectedCV, setSelectedCV] = useState<string>('');
   const [targetPlatform, setTargetPlatform] = useState<'linkedin' | 'resume'>('linkedin');
-  const [industryFocus, setIndustryFocus] = useState<string>('Software Development');
-  const [careerLevel, setCareerLevel] = useState<string>('Mid-Level');
+  const [jobTitle, setJobTitle] = useState<string>('');
+  const [jobDescription, setJobDescription] = useState<string>('');
   const [enhancementResult, setEnhancementResult] = useState<ProfileEnhancementResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('keywords');
-
-  // Replace hardcoded industry options with translations
-  const INDUSTRY_OPTIONS = [
-    t('profileEnhancer.industries.software'),
-    t('profileEnhancer.industries.dataScience'),
-    t('profileEnhancer.industries.productManagement'),
-    t('profileEnhancer.industries.digitalMarketing'),
-    t('profileEnhancer.industries.design'),
-    t('profileEnhancer.industries.finance'),
-    t('profileEnhancer.industries.healthcare'),
-    t('profileEnhancer.industries.education'),
-    t('profileEnhancer.industries.sales'),
-    t('profileEnhancer.industries.customerService'),
-    t('profileEnhancer.industries.humanResources'),
-    t('profileEnhancer.industries.engineering'),
-    t('profileEnhancer.industries.manufacturing'),
-    t('profileEnhancer.industries.legal'),
-    t('profileEnhancer.industries.other')
-  ];
-  
-  // Replace hardcoded career level options with translations
-  const CAREER_LEVEL_OPTIONS = [
-    t('profileEnhancer.careerLevels.entry'),
-    t('profileEnhancer.careerLevels.junior'),
-    t('profileEnhancer.careerLevels.mid'),
-    t('profileEnhancer.careerLevels.senior'),
-    t('profileEnhancer.careerLevels.manager'),
-    t('profileEnhancer.careerLevels.director'),
-    t('profileEnhancer.careerLevels.executive')
-  ];
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -124,8 +94,8 @@ const ProfileEnhancer: React.FC = () => {
       return;
     }
 
-    if (!industryFocus) {
-      setError('Please specify an industry focus');
+    if (!jobTitle || !jobDescription) {
+      setError('Please enter a job title and description');
       return;
     }
 
@@ -146,16 +116,16 @@ const ProfileEnhancer: React.FC = () => {
       console.log('API parameters:', {
         cvId: selectedCV,
         targetPlatform,
-        industryFocus,
-        careerLevel
+        industryFocus: jobTitle,
+        careerLevel: jobDescription
       });
       
       // Call the enhancement API with detailed error logging
       const result = await enhanceProfile(
         selectedCV,
         targetPlatform,
-        industryFocus,
-        careerLevel
+        jobTitle,
+        jobDescription
       );
       
       console.log('Enhancement complete. Result:', result);
@@ -201,7 +171,8 @@ const ProfileEnhancer: React.FC = () => {
           cvId: selectedCV,
           optimizationResult: enhancementResult,
           targetPlatform,
-          industryFocus,
+          industryFocus: jobTitle,
+          careerLevel: jobDescription,
           timestamp: new Date().toISOString()
         }),
       });
@@ -232,7 +203,7 @@ const ProfileEnhancer: React.FC = () => {
     }
     
     try {
-      await generateEnhancementPDF(enhancementResult, targetPlatform, industryFocus);
+      await generateEnhancementPDF(enhancementResult, targetPlatform, jobTitle);
       console.log('PDF generated successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -330,40 +301,35 @@ const ProfileEnhancer: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="industry-focus">
-                {t('profileOptimizer.industryFocus')}
+              <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="job-title">
+                Título del Trabajo
               </label>
-              <select
-                id="industry-focus"
+              <input
+                id="job-title"
+                type="text"
                 className="w-full p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={industryFocus}
-                onChange={(e) => setIndustryFocus(e.target.value)}
-              >
-                {INDUSTRY_OPTIONS.map((industry) => (
-                  <option key={industry} value={industry}>{industry}</option>
-                ))}
-              </select>
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="Ingresa el título del trabajo"
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="career-level">
-                {t('profileOptimizer.careerLevel')}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="job-description">
+                Ingresa la Descripción del Puesto
               </label>
-              <select
-                id="career-level"
-                className="w-full p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={careerLevel}
-                onChange={(e) => setCareerLevel(e.target.value)}
-              >
-                {CAREER_LEVEL_OPTIONS.map((level) => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
+              <textarea
+                id="job-description"
+                className="w-full h-48 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Ingresa la descripción detallada del puesto de trabajo"
+              />
             </div>
             <div className="md:col-span-2 mt-4">
               <button
                 className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed"
                 onClick={handleEnhance}
-                disabled={!selectedCV || !industryFocus}
+                disabled={!selectedCV || !jobTitle || !jobDescription}
               >
                 {t('profileEnhancer.enhance')}
               </button>
