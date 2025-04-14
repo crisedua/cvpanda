@@ -404,7 +404,7 @@ export const downloadCV = async (cvId: string, filename: string) => {
 };
 
 // Analyze skill gaps between CV and job description
-export const analyzeSkillGaps = async (cvId: string, jobDescription: string) => {
+export const analyzeSkillGaps = async (cvId: string, jobDescription: string, options: { signal?: AbortSignal } = {}) => {
   try {
     logger.log('Analyzing skill gaps', { cvId });
     const response = await fetch(`${API_BASE_URL}/api/analyze-skill-gaps`, {
@@ -413,6 +413,7 @@ export const analyzeSkillGaps = async (cvId: string, jobDescription: string) => 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ cvId, jobDescription }),
+      signal: options.signal,
     });
     
     if (!response.ok) {
