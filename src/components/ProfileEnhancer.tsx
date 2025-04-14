@@ -388,7 +388,7 @@ const ProfileEnhancer: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold">
-              {t('profileEnhancer.enhancementResults')}
+              Resultados de Mejora de Perfil
             </h2>
             <div className="flex space-x-3">
               <button
@@ -403,342 +403,137 @@ const ProfileEnhancer: React.FC = () => {
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
               >
                 <CheckCircle className="mr-2 h-5 w-5" />
-                {t('profileEnhancer.saveResults')}
+                Guardar Resultados
               </button>
               <button
                 onClick={handleNewEnhancement}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
-                {t('profileEnhancer.newEnhancement')}
+                Nueva Mejora
               </button>
             </div>
           </div>
 
-          {/* Profile Score */}
-          <div className="flex flex-wrap mb-8">
-            <div className="w-full lg:w-1/3 px-4 mb-6 lg:mb-0">
-              <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100 h-full">
-                <h3 className="text-lg font-semibold text-indigo-800 mb-2 flex items-center">
-                  <BarChart className="mr-2 h-5 w-5" />
-                  {t('profileEnhancer.profileScore')}
-                </h3>
-                <div className="flex items-center justify-around mt-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-indigo-600">
-                      {enhancementResult?.profileScore?.current}%
-                    </div>
-                    <div className="text-sm text-gray-600">{t('profileEnhancer.current')}</div>
-                  </div>
-                  <div className="text-indigo-500">→</div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">
-                      {enhancementResult?.profileScore?.potential}%
-                    </div>
-                    <div className="text-sm text-gray-600">{t('profileEnhancer.potential')}</div>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h4 className="font-medium text-indigo-800 mb-2">{t('profileEnhancer.keyFactors')}</h4>
-                  <ul className="list-disc pl-5 text-sm">
-                    {enhancementResult?.profileScore?.keyFactors?.map((factor, index) => (
-                      <li key={index} className="mb-1 text-gray-700">{factor}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-            <div className="w-full lg:w-2/3 px-4">
-              <div className="bg-white p-6 rounded-lg border border-gray-200 h-full">
-                <div className="flex space-x-2 overflow-x-auto pb-2 mb-4 border-b">
-                  <button
-                    className={`px-4 py-2 rounded-md ${activeTab === 'keywords' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600 hover:bg-gray-100'}`}
-                    onClick={() => setActiveTab('keywords')}
-                  >
-                    Keyword Analysis
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md ${activeTab === 'sections' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600 hover:bg-gray-100'}`}
-                    onClick={() => setActiveTab('sections')}
-                  >
-                    Section Enhancements
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md ${activeTab === 'trends' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600 hover:bg-gray-100'}`}
-                    onClick={() => setActiveTab('trends')}
-                  >
-                    Industry Trends
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md ${activeTab === 'ats' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600 hover:bg-gray-100'}`}
-                    onClick={() => setActiveTab('ats')}
-                  >
-                    ATS Optimization
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md ${activeTab === 'actionPlan' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600 hover:bg-gray-100'}`}
-                    onClick={() => setActiveTab('actionPlan')}
-                  >
-                    Action Plan
-                  </button>
-                </div>
-
-                {/* Tab Content */}
-                {activeTab === 'keywords' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <TrendingUp className="mr-2 h-5 w-5 text-indigo-600" />
-                      {t('profileEnhancer.keywordAnalysis')}
-                    </h3>
-                    <div className="space-y-4">
-                      {enhancementResult.keywordAnalysis?.map((keyword, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-md mb-2">{keyword.keyword}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              keyword.relevance > 80 ? 'bg-green-100 text-green-800' : 
-                              keyword.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {t('profileEnhancer.relevance')}: {keyword.relevance}%
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">{t('profileEnhancer.placement')}: </span>
-                            {keyword.placement}
-                          </p>
-                          <p className="text-sm text-gray-700 mt-2">
-                            <span className="font-medium">{t('profileEnhancer.recommendedUsage')}: </span>
-                            {keyword.recommendedUsage}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'sections' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <FileText className="mr-2 h-5 w-5 text-indigo-600" />
-                      {t('profileEnhancer.sectionEnhancements')}
-                    </h3>
-                    <div className="space-y-6">
-                      {enhancementResult.sectionEnhancements?.map((enhancement, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <h4 className="font-semibold text-lg mb-2 text-indigo-700">{enhancement.section}</h4>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.currentContent')}</p>
-                              <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
-                                {enhancement.currentContent}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-xs text-green-500 mb-1">{t('profileEnhancer.enhancedContent')}</p>
-                              <div className="bg-green-50 p-3 rounded border border-green-200 text-sm">
-                                {enhancement.enhancedContent}
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">{t('profileEnhancer.rationale')}</p>
-                            <p className="text-sm text-gray-700">{enhancement.rationale}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'trends' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <TrendingUp className="mr-2 h-5 w-5 text-indigo-600" />
-                      {t('profileEnhancer.industryTrends')}
-                    </h3>
-                    <div className="space-y-4">
-                      {enhancementResult.industryTrends?.map((trend, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-md mb-2">{trend.trend}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              trend.relevance > 80 ? 'bg-green-100 text-green-800' : 
-                              trend.relevance > 50 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {t('profileEnhancer.relevance')}: {trend.relevance}%
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">{t('profileEnhancer.implementation')}: </span>
-                            {trend.implementation}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'ats' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <Award className="mr-2 h-5 w-5 text-indigo-600" />
-                      ATS Optimization
-                    </h3>
-                    {enhancementResult?.atsOptimization ? (
-                      <>
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">ATS Compatibility Score</span>
-                            <span className={`px-3 py-1 rounded-full text-sm ${
-                              enhancementResult.atsOptimization.currentScore > 80 ? 'bg-green-100 text-green-800' : 
-                              enhancementResult.atsOptimization.currentScore > 50 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {enhancementResult.atsOptimization.currentScore}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div 
-                              className={`h-2.5 rounded-full ${
-                                enhancementResult.atsOptimization.currentScore > 80 ? 'bg-green-600' : 
-                                enhancementResult.atsOptimization.currentScore > 50 ? 'bg-yellow-500' : 
-                                'bg-red-600'
-                              }`}
-                              style={{ width: `${enhancementResult.atsOptimization.currentScore}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {enhancementResult.atsOptimization.recommendations && enhancementResult.atsOptimization.recommendations.length > 0 && (
-                            <div>
-                              <h4 className="font-medium text-gray-700 mb-2">Recommendations</h4>
-                              <ul className="space-y-2">
-                                {enhancementResult.atsOptimization.recommendations.map((rec, i) => (
-                                  <li key={i} className="flex items-start">
-                                    <svg className="h-5 w-5 text-indigo-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span className="text-sm text-gray-600">{rec}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          
-                          {enhancementResult.atsOptimization.keywordsToAdd && enhancementResult.atsOptimization.keywordsToAdd.length > 0 && (
-                            <div>
-                              <h4 className="font-medium text-gray-700 mb-2">Keywords to Add</h4>
-                              <div className="flex flex-wrap gap-2">
-                                {enhancementResult.atsOptimization.keywordsToAdd.map((keyword, i) => (
-                                  <span key={i} className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                                    {keyword}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                        <p className="text-yellow-800">ATS optimization data not available in this result.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'actionPlan' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <Calendar className="mr-2 h-5 w-5 text-indigo-600" />
-                      Action Plan
-                    </h3>
-                    <div className="space-y-6">
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                          Immediate Actions
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.immediate?.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                          Short-Term Actions (1 month)
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.shortTerm?.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-indigo-700 mb-2 flex items-center">
-                          <span className="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-2"></span>
-                          Long-Term Actions (3-6 months)
-                        </h4>
-                        <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.longTerm?.map((action, i) => (
-                            <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Competitive Advantage Section */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <Lightbulb className="mr-2 h-5 w-5 text-amber-500" />
-              Competitive Advantage Strategy
+          {/* Main content: optimized resume */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 className="text-xl font-semibold mb-4 text-center">
+              Currículum Optimizado para: <span className="text-indigo-600">{jobTitle}</span>
             </h3>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-              <div className="mb-4">
-                <h4 className="font-medium text-amber-800 mb-2">Differentiation Strategy</h4>
-                <p className="text-gray-700">{enhancementResult?.competitiveAdvantage?.differentiationStrategy}</p>
+            
+            <div className="space-y-6">
+              {/* Profile Summary */}
+              {enhancementResult?.sectionEnhancements?.find(section => 
+                section.section.toLowerCase().includes('summary') || 
+                section.section.toLowerCase().includes('perfil') || 
+                section.section.toLowerCase().includes('resumen')
+              ) && (
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                    Perfil Profesional
+                  </h4>
+                  <p className="text-gray-800">
+                    {enhancementResult.sectionEnhancements.find(section => 
+                      section.section.toLowerCase().includes('summary') || 
+                      section.section.toLowerCase().includes('perfil') || 
+                      section.section.toLowerCase().includes('resumen')
+                    )?.enhancedContent}
+                  </p>
+                </div>
+              )}
+
+              {/* Skills Section */}
+              <div className="border-b pb-4">
+                <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                  Habilidades Clave
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
+                    <span 
+                      key={index}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        keyword.relevance > 80 ? 'bg-green-100 text-green-800 border border-green-200' : 
+                        keyword.relevance > 50 ? 'bg-blue-100 text-blue-800 border border-blue-200' : 
+                        'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}
+                    >
+                      {keyword.keyword}
+                    </span>
+                  ))}
+                </div>
               </div>
+
+              {/* Experience Section */}
+              {enhancementResult?.sectionEnhancements?.find(section => 
+                section.section.toLowerCase().includes('experience') || 
+                section.section.toLowerCase().includes('experiencia')
+              ) && (
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                    Experiencia Profesional
+                  </h4>
+                  <div className="prose prose-indigo max-w-none">
+                    <div dangerouslySetInnerHTML={{ 
+                      __html: enhancementResult.sectionEnhancements.find(section => 
+                        section.section.toLowerCase().includes('experience') || 
+                        section.section.toLowerCase().includes('experiencia')
+                      )?.enhancedContent || ''
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Education Section */}
+              {enhancementResult?.sectionEnhancements?.find(section => 
+                section.section.toLowerCase().includes('education') || 
+                section.section.toLowerCase().includes('educación') ||
+                section.section.toLowerCase().includes('formación')
+              ) && (
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                    Educación
+                  </h4>
+                  <div className="prose prose-indigo max-w-none">
+                    <div dangerouslySetInnerHTML={{ 
+                      __html: enhancementResult.sectionEnhancements.find(section => 
+                        section.section.toLowerCase().includes('education') || 
+                        section.section.toLowerCase().includes('educación') ||
+                        section.section.toLowerCase().includes('formación')
+                      )?.enhancedContent || ''
+                    }} />
+                  </div>
+                </div>
+              )}
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-amber-800 mb-2">Unique Selling Points</h4>
-                  <ul className="space-y-2">
-                    {enhancementResult?.competitiveAdvantage?.uniqueSellingPoints?.map((point, i) => (
-                      <li key={i} className="flex items-start">
-                        <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-700">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* Certifications Section (if exists) */}
+              {enhancementResult?.sectionEnhancements?.find(section => 
+                section.section.toLowerCase().includes('certif') 
+              ) && (
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                    Certificaciones
+                  </h4>
+                  <div className="prose prose-indigo max-w-none">
+                    <div dangerouslySetInnerHTML={{ 
+                      __html: enhancementResult.sectionEnhancements.find(section => 
+                        section.section.toLowerCase().includes('certif')
+                      )?.enhancedContent || ''
+                    }} />
+                  </div>
                 </div>
-                
-                <div>
-                  <h4 className="font-medium text-amber-800 mb-2">Emerging Opportunities</h4>
-                  <ul className="space-y-2">
-                    {enhancementResult?.competitiveAdvantage?.emergingOpportunities?.map((opportunity, i) => (
-                      <li key={i} className="flex items-start">
-                        <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                        <span className="text-gray-700">{opportunity}</span>
-                      </li>
-                    )) || <li className="text-gray-500">No emerging opportunities found</li>}
-                  </ul>
-                </div>
-              </div>
+              )}
+            </div>
+            
+            {/* Job-specific recommendations */}
+            <div className="mt-8 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+              <h4 className="font-semibold text-lg text-indigo-700 mb-2 flex items-center">
+                <Lightbulb className="mr-2 h-5 w-5" />
+                Recomendaciones para esta posición
+              </h4>
+              <ul className="list-disc pl-5 space-y-2">
+                {enhancementResult?.actionPlan?.immediate?.slice(0, 3).map((action, index) => (
+                  <li key={index} className="text-indigo-800">{action}</li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
