@@ -28,6 +28,7 @@ const ProfileEnhancer: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [enhancing, setEnhancing] = useState<boolean>(false);
   const [selectedCV, setSelectedCV] = useState<string>('');
+  const [selectedCVContent, setSelectedCVContent] = useState<string>('');
   const [targetPlatform, setTargetPlatform] = useState<'linkedin' | 'resume'>('linkedin');
   const [jobTitle, setJobTitle] = useState<string>('');
   const [jobDescription, setJobDescription] = useState<string>('');
@@ -73,6 +74,44 @@ const ProfileEnhancer: React.FC = () => {
     }
   }, [t, user?.id]);
 
+  useEffect(() => {
+    // Fetch the content of the selected CV
+    const fetchCVContent = async () => {
+      if (!selectedCV) return;
+      
+      try {
+        setLoading(true);
+        console.log("Fetching content for CV ID:", selectedCV);
+        const selectedCvData = cvs.find(cv => cv.id === selectedCV);
+        console.log("Selected CV data:", selectedCvData);
+        
+        if (selectedCvData?.content) {
+          console.log("Using CV content from local data");
+          setSelectedCVContent(selectedCvData.content);
+        } else {
+          console.log("Fetching CV content from API");
+          // Fetch the CV content if not already loaded
+          const response = await fetch(`${API_BASE_URL}/api/cvs/${selectedCV}/content`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch CV content');
+          }
+          const data = await response.json();
+          console.log("API response for CV content:", data);
+          if (data.success && data.content) {
+            setSelectedCVContent(data.content);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching CV content:', error);
+        setError('No se pudo cargar el contenido del CV');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCVContent();
+  }, [selectedCV, cvs]);
+
   const handleRefreshCVs = async () => {
     setLoading(true);
     try {
@@ -113,6 +152,7 @@ const ProfileEnhancer: React.FC = () => {
 
     try {
       console.log('Starting profile enhancement for CV:', selectedCV);
+      console.log('Selected CV content:', selectedCVContent);
       console.log('API parameters:', {
         cvId: selectedCV,
         targetPlatform,
@@ -132,6 +172,8 @@ const ProfileEnhancer: React.FC = () => {
 
       if (result.success && result.enhancedData) {
         setProgress(100);
+        // Store the original content in the enhancement result
+        result.enhancedData.originalContent = selectedCVContent;
         setEnhancementResult(result.enhancedData);
       } else {
         console.error('Enhancement result is not valid:', result.error || 'Unknown error');
@@ -422,8 +464,8 @@ const ProfileEnhancer: React.FC = () => {
                 Tu CV Original
               </h3>
               <div className="prose prose-sm max-w-none text-gray-600">
-                {enhancementResult?.originalContent ? (
-                  <div dangerouslySetInnerHTML={{ __html: enhancementResult.originalContent }} />
+                {selectedCVContent ? (
+                  <div dangerouslySetInnerHTML={{ __html: selectedCVContent }} />
                 ) : (
                   <p>No se pudo cargar el contenido original del CV.</p>
                 )}
