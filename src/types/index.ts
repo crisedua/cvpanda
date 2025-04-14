@@ -160,3 +160,54 @@ export interface ScannedJob {
   notes?: string;
   cvId?: string;
 }
+
+export interface ProfileEnhancementResult {
+  profileScore: {
+    current: number;
+    potential: number;
+    keyFactors: string[];
+  };
+  keywordAnalysis: Array<{
+    keyword: string;
+    relevance: number;
+    placement: string;
+    recommendedUsage: string;
+  }>;
+  sectionEnhancements: Array<{
+    section: string;
+    currentContent: string;
+    enhancedContent: string;
+    rationale: string;
+  }>;
+  industryTrends: Array<{
+    trend: string;
+    relevance: number;
+    implementation: string;
+  }>;
+  atsOptimization: {
+    currentScore: number;
+    recommendations: string[];
+    keywordsToAdd: string[];
+  };
+  actionPlan: {
+    immediate: string[];
+    shortTerm: string[];
+    longTerm: string[];
+  };
+  competitiveAdvantage: {
+    differentiationStrategy: string;
+    uniqueSellingPoints: string[];
+    emergingOpportunities: string[];
+  };
+  keywordOptimization?: Array<{
+    original: string;
+    suggested: string;
+    reason: string;
+  }>;
+  metadata: {
+    processedAt: string;
+    targetPlatform: string;
+    industryFocus: string;
+    careerLevel: string;
+  };
+}

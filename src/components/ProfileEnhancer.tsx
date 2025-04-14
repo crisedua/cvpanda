@@ -385,10 +385,10 @@ const ProfileEnhancer: React.FC = () => {
       </div>
 
       {enhancementResult && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold">
-              Resultados de Mejora de Perfil
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8 max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6 border-b pb-4">
+            <h2 className="text-2xl font-semibold text-indigo-700">
+              Comparación de CV
             </h2>
             <div className="flex space-x-3">
               <button
@@ -396,7 +396,7 @@ const ProfileEnhancer: React.FC = () => {
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
               >
                 <Download className="mr-2 h-5 w-5" />
-                Download PDF
+                Descargar PDF
               </button>
               <button
                 onClick={handleSaveEnhancement}
@@ -407,33 +407,49 @@ const ProfileEnhancer: React.FC = () => {
               </button>
               <button
                 onClick={handleNewEnhancement}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-md hover:bg-gray-50 transition-colors"
               >
                 Nueva Mejora
               </button>
             </div>
           </div>
 
+          {/* Introduction */}
+          <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <h3 className="text-lg font-semibold text-blue-800 flex items-center mb-2">
+              <Lightbulb className="mr-2 h-5 w-5" />
+              Tu Currículum Optimizado para: <span className="ml-2 font-bold text-indigo-700">{jobTitle}</span>
+            </h3>
+            <p className="text-gray-700 mb-2">
+              Hemos analizado tu currículum y lo hemos optimizado específicamente para el puesto de <span className="font-semibold">{jobTitle}</span>.
+              Las modificaciones realizadas destacan tus habilidades y experiencias más relevantes para este rol,
+              aumentando significativamente tus posibilidades de superar los filtros de selección automáticos (ATS) y captar la atención de los reclutadores.
+            </p>
+            <p className="text-gray-700">
+              Compara la versión original con la optimizada y observa cómo los cambios destacan tus fortalezas más relevantes para esta posición específica.
+            </p>
+          </div>
+
           {/* Side-by-side comparison */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
             {/* Original CV */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-center text-gray-700 pb-2 border-b">
-                CV Original
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 shadow-sm">
+              <h3 className="text-xl font-semibold mb-4 text-center text-gray-700 pb-2 border-b border-gray-200">
+                Tu CV Original
               </h3>
               
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Profile Summary */}
                 {enhancementResult?.sectionEnhancements?.find(section => 
                   section.section.toLowerCase().includes('summary') || 
                   section.section.toLowerCase().includes('perfil') || 
                   section.section.toLowerCase().includes('resumen')
                 ) && (
-                  <div className="pb-4">
-                    <h4 className="font-semibold text-lg text-gray-700 mb-2">
+                  <div className="pb-3 border-b border-gray-200">
+                    <h4 className="font-semibold text-md text-gray-700 mb-2">
                       Perfil Profesional
                     </h4>
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 text-sm">
                       {enhancementResult.sectionEnhancements.find(section => 
                         section.section.toLowerCase().includes('summary') || 
                         section.section.toLowerCase().includes('perfil') || 
@@ -448,11 +464,11 @@ const ProfileEnhancer: React.FC = () => {
                   section.section.toLowerCase().includes('experience') || 
                   section.section.toLowerCase().includes('experiencia')
                 ) && (
-                  <div className="pb-4">
-                    <h4 className="font-semibold text-lg text-gray-700 mb-2">
+                  <div className="pb-3 border-b border-gray-200">
+                    <h4 className="font-semibold text-md text-gray-700 mb-2">
                       Experiencia Profesional
                     </h4>
-                    <div className="prose max-w-none text-gray-600">
+                    <div className="prose prose-sm max-w-none text-gray-600">
                       <div dangerouslySetInnerHTML={{ 
                         __html: enhancementResult.sectionEnhancements.find(section => 
                           section.section.toLowerCase().includes('experience') || 
@@ -469,11 +485,11 @@ const ProfileEnhancer: React.FC = () => {
                   section.section.toLowerCase().includes('educación') ||
                   section.section.toLowerCase().includes('formación')
                 ) && (
-                  <div className="pb-4">
-                    <h4 className="font-semibold text-lg text-gray-700 mb-2">
+                  <div className="pb-3 border-b border-gray-200">
+                    <h4 className="font-semibold text-md text-gray-700 mb-2">
                       Educación
                     </h4>
-                    <div className="prose max-w-none text-gray-600">
+                    <div className="prose prose-sm max-w-none text-gray-600">
                       <div dangerouslySetInnerHTML={{ 
                         __html: enhancementResult.sectionEnhancements.find(section => 
                           section.section.toLowerCase().includes('education') || 
@@ -489,19 +505,19 @@ const ProfileEnhancer: React.FC = () => {
 
             {/* Optimized CV */}
             <div className="bg-white border-2 border-indigo-200 rounded-lg p-6 shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-center text-indigo-700 pb-2 border-b">
-                Currículum Optimizado para: <span className="font-bold">{jobTitle}</span>
+              <h3 className="text-xl font-semibold mb-4 text-center text-indigo-700 pb-2 border-b border-indigo-100">
+                CV Optimizado
               </h3>
               
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Profile Summary */}
                 {enhancementResult?.sectionEnhancements?.find(section => 
                   section.section.toLowerCase().includes('summary') || 
                   section.section.toLowerCase().includes('perfil') || 
                   section.section.toLowerCase().includes('resumen')
                 ) && (
-                  <div className="border-b pb-4">
-                    <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
                       Perfil Profesional
                     </h4>
                     <p className="text-gray-800">
@@ -515,8 +531,8 @@ const ProfileEnhancer: React.FC = () => {
                 )}
 
                 {/* Skills Section */}
-                <div className="border-b pb-4">
-                  <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                <div className="pb-3 border-b border-indigo-100">
+                  <h4 className="font-semibold text-md text-indigo-700 mb-2">
                     Habilidades Clave
                   </h4>
                   <div className="flex flex-wrap gap-2">
@@ -540,11 +556,11 @@ const ProfileEnhancer: React.FC = () => {
                   section.section.toLowerCase().includes('experience') || 
                   section.section.toLowerCase().includes('experiencia')
                 ) && (
-                  <div className="border-b pb-4">
-                    <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
                       Experiencia Profesional
                     </h4>
-                    <div className="prose prose-indigo max-w-none">
+                    <div className="prose prose-sm max-w-none prose-indigo">
                       <div dangerouslySetInnerHTML={{ 
                         __html: enhancementResult.sectionEnhancements.find(section => 
                           section.section.toLowerCase().includes('experience') || 
@@ -561,11 +577,11 @@ const ProfileEnhancer: React.FC = () => {
                   section.section.toLowerCase().includes('educación') ||
                   section.section.toLowerCase().includes('formación')
                 ) && (
-                  <div className="border-b pb-4">
-                    <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
                       Educación
                     </h4>
-                    <div className="prose prose-indigo max-w-none">
+                    <div className="prose prose-sm max-w-none prose-indigo">
                       <div dangerouslySetInnerHTML={{ 
                         __html: enhancementResult.sectionEnhancements.find(section => 
                           section.section.toLowerCase().includes('education') || 
@@ -581,11 +597,11 @@ const ProfileEnhancer: React.FC = () => {
                 {enhancementResult?.sectionEnhancements?.find(section => 
                   section.section.toLowerCase().includes('certif') 
                 ) && (
-                  <div className="border-b pb-4">
-                    <h4 className="font-semibold text-lg text-indigo-700 mb-2">
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
                       Certificaciones
                     </h4>
-                    <div className="prose prose-indigo max-w-none">
+                    <div className="prose prose-sm max-w-none prose-indigo">
                       <div dangerouslySetInnerHTML={{ 
                         __html: enhancementResult.sectionEnhancements.find(section => 
                           section.section.toLowerCase().includes('certif')
@@ -595,16 +611,33 @@ const ProfileEnhancer: React.FC = () => {
                   </div>
                 )}
               </div>
-              
-              {/* Job-specific recommendations */}
-              <div className="mt-8 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
-                <h4 className="font-semibold text-lg text-indigo-700 mb-2 flex items-center">
-                  <Lightbulb className="mr-2 h-5 w-5" />
-                  Recomendaciones para esta posición
+            </div>
+          </div>
+
+          {/* Summary of changes and recommendations */}
+          <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-6 mb-4">
+            <h3 className="text-xl font-semibold text-indigo-800 mb-4 border-b pb-2 border-indigo-200">
+              Cambios Principales y Recomendaciones
+            </h3>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-semibold text-indigo-700 mb-3 flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+                  Lo que hemos mejorado:
                 </h4>
-                <ul className="list-disc pl-5 space-y-2">
-                  {enhancementResult?.actionPlan?.immediate?.slice(0, 3).map((action, index) => (
-                    <li key={index} className="text-indigo-800">{action}</li>
+                <ul className="space-y-2 text-gray-700">
+                  {enhancementResult?.profileScore?.keyFactors?.slice(0, 3).map((factor, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      <span>{factor}</span>
+                    </li>
+                  ))}
+                  {enhancementResult?.keywordOptimization?.slice(0, 2).map((item: { original: string; suggested: string; reason: string }, idx: number) => (
+                    <li key={`kw-${idx}`} className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      <span>Mejoramos <span className="line-through text-gray-400 mx-1">{item.original}</span> a <span className="font-medium text-green-700 mx-1">{item.suggested}</span> {item.reason}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -616,4 +649,4 @@ const ProfileEnhancer: React.FC = () => {
   );
 };
 
-export default ProfileEnhancer; 
+export default ProfileEnhancer;
