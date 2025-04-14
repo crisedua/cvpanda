@@ -88,17 +88,47 @@ const ProfileEnhancer: React.FC = () => {
         if (selectedCvData?.content) {
           console.log("Using CV content from local data");
           setSelectedCVContent(selectedCvData.content);
+        } else if (selectedCvData?.parsed_data) {
+          // Use parsed_data if content is not available
+          console.log("Using parsed_data as content");
+          const parsedContent = formatParsedDataToHTML(selectedCvData.parsed_data);
+          setSelectedCVContent(parsedContent);
         } else {
           console.log("Fetching CV content from API");
-          // Fetch the CV content if not already loaded
-          const response = await fetch(`${API_BASE_URL}/api/cvs/${selectedCV}/content`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch CV content');
-          }
-          const data = await response.json();
-          console.log("API response for CV content:", data);
-          if (data.success && data.content) {
-            setSelectedCVContent(data.content);
+          try {
+            // Try to fetch the CV content
+            const response = await fetch(`${API_BASE_URL}/api/cvs/${selectedCV}/content`);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch CV content: ${response.status} ${response.statusText}`);
+            }
+            const data = await response.json();
+            console.log("API response for CV content:", data);
+            if (data.success && data.content) {
+              setSelectedCVContent(data.content);
+            } else {
+              throw new Error('No content in API response');
+            }
+          } catch (fetchError) {
+            console.error('Error fetching CV content:', fetchError);
+            // Handle the case where we can't get the content directly
+            // Try to get the parsed data instead
+            try {
+              const parsedDataResponse = await fetch(`${API_BASE_URL}/api/cvs/${selectedCV}`);
+              if (!parsedDataResponse.ok) {
+                throw new Error('Failed to fetch CV parsed data');
+              }
+              const parsedData = await parsedDataResponse.json();
+              if (parsedData.success && parsedData.cv?.parsed_data) {
+                console.log("Using parsed_data from API as fallback");
+                const parsedContent = formatParsedDataToHTML(parsedData.cv.parsed_data);
+                setSelectedCVContent(parsedContent);
+              } else {
+                throw new Error('No parsed data available');
+              }
+            } catch (parsedError) {
+              console.error('Error fetching parsed data:', parsedError);
+              throw new Error('Could not retrieve CV data in any format');
+            }
           }
         }
       } catch (error) {
@@ -111,6 +141,100 @@ const ProfileEnhancer: React.FC = () => {
 
     fetchCVContent();
   }, [selectedCV, cvs]);
+
+  // Helper function to format parsed data into HTML
+  const formatParsedDataToHTML = (parsedData: {
+    name?: string;
+    job_title?: string;
+    email?: string;
+    phone?: string;
+    location?: string;
+    summary?: string;
+    skills?: string[];
+    work_experience?: Array<{
+      title?: string;
+      company?: string;
+      dates?: string;
+      description?: string;
+    }>;
+    education?: Array<{
+      institution?: string;
+      degree?: string;
+      dates?: string;
+    }>;
+  }) => {
+    if (!parsedData) return '';
+    
+    let html = '';
+    
+    // Add name and job title if available
+    if (parsedData.name) {
+      html += `<h2 class="text-xl font-bold mb-2">${parsedData.name}</h2>`;
+    }
+    
+    if (parsedData.job_title) {
+      html += `<p class="mb-4 text-gray-700">${parsedData.job_title}</p>`;
+    }
+    
+    // Add contact info
+    let contactInfo = [];
+    if (parsedData.email) contactInfo.push(`Email: ${parsedData.email}`);
+    if (parsedData.phone) contactInfo.push(`Phone: ${parsedData.phone}`);
+    if (parsedData.location) contactInfo.push(`Location: ${parsedData.location}`);
+    
+    if (contactInfo.length > 0) {
+      html += `<div class="mb-4">${contactInfo.join(' | ')}</div>`;
+    }
+    
+    // Add summary if available
+    if (parsedData.summary) {
+      html += `<div class="mb-4">
+        <h3 class="text-lg font-semibold mb-2">Summary</h3>
+        <p>${parsedData.summary}</p>
+      </div>`;
+    }
+    
+    // Add skills if available
+    if (parsedData.skills && parsedData.skills.length > 0) {
+      html += `<div class="mb-4">
+        <h3 class="text-lg font-semibold mb-2">Skills</h3>
+        <p>${parsedData.skills.join(', ')}</p>
+      </div>`;
+    }
+    
+    // Add work experience if available
+    if (parsedData.work_experience && parsedData.work_experience.length > 0) {
+      html += `<div class="mb-4">
+        <h3 class="text-lg font-semibold mb-2">Work Experience</h3>`;
+      
+      parsedData.work_experience.forEach((exp) => {
+        html += `<div class="mb-3">
+          <p class="font-medium">${exp.title || ''} ${exp.company ? 'at ' + exp.company : ''}</p>
+          ${exp.dates ? `<p class="text-sm text-gray-600">${exp.dates}</p>` : ''}
+          ${exp.description ? `<p>${exp.description}</p>` : ''}
+        </div>`;
+      });
+      
+      html += `</div>`;
+    }
+    
+    // Add education if available
+    if (parsedData.education && parsedData.education.length > 0) {
+      html += `<div class="mb-4">
+        <h3 class="text-lg font-semibold mb-2">Education</h3>`;
+      
+      parsedData.education.forEach((edu) => {
+        html += `<div class="mb-2">
+          <p class="font-medium">${edu.degree || ''} ${edu.institution ? 'at ' + edu.institution : ''}</p>
+          ${edu.dates ? `<p class="text-sm text-gray-600">${edu.dates}</p>` : ''}
+        </div>`;
+      });
+      
+      html += `</div>`;
+    }
+    
+    return html;
+  };
 
   const handleRefreshCVs = async () => {
     setLoading(true);
