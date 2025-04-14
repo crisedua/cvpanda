@@ -266,7 +266,7 @@ const ProfileEnhancer: React.FC = () => {
                 onChange={(e) => setSelectedCV(e.target.value)}
               >
                 <option value="" disabled>Select a CV</option>
-                {cvs.map((cv) => (
+                {cvs?.map((cv) => (
                   <option key={cv.id} value={cv.id}>
                     {cv.filename}
                   </option>
@@ -425,14 +425,14 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="flex items-center justify-around mt-4">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-indigo-600">
-                      {enhancementResult.profileScore.current}%
+                      {enhancementResult?.profileScore?.current}%
                     </div>
                     <div className="text-sm text-gray-600">{t('profileEnhancer.current')}</div>
                   </div>
                   <div className="text-indigo-500">→</div>
                   <div className="text-center">
                     <div className="text-3xl font-bold text-green-600">
-                      {enhancementResult.profileScore.potential}%
+                      {enhancementResult?.profileScore?.potential}%
                     </div>
                     <div className="text-sm text-gray-600">{t('profileEnhancer.potential')}</div>
                   </div>
@@ -440,7 +440,7 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="mt-4">
                   <h4 className="font-medium text-indigo-800 mb-2">{t('profileEnhancer.keyFactors')}</h4>
                   <ul className="list-disc pl-5 text-sm">
-                    {enhancementResult.profileScore.keyFactors.map((factor, index) => (
+                    {enhancementResult?.profileScore?.keyFactors?.map((factor, index) => (
                       <li key={index} className="mb-1 text-gray-700">{factor}</li>
                     ))}
                   </ul>
@@ -490,7 +490,7 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.keywordAnalysis')}
                     </h3>
                     <div className="space-y-4">
-                      {enhancementResult.keywordAnalysis.map((keyword, index) => (
+                      {enhancementResult.keywordAnalysis?.map((keyword, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex justify-between items-start">
                             <h4 className="font-semibold text-md mb-2">{keyword.keyword}</h4>
@@ -523,7 +523,7 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.sectionEnhancements')}
                     </h3>
                     <div className="space-y-6">
-                      {enhancementResult.sectionEnhancements.map((enhancement, index) => (
+                      {enhancementResult.sectionEnhancements?.map((enhancement, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
                           <h4 className="font-semibold text-lg mb-2 text-indigo-700">{enhancement.section}</h4>
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
@@ -557,7 +557,7 @@ const ProfileEnhancer: React.FC = () => {
                       {t('profileEnhancer.industryTrends')}
                     </h3>
                     <div className="space-y-4">
-                      {enhancementResult.industryTrends.map((trend, index) => (
+                      {enhancementResult.industryTrends?.map((trend, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex justify-between items-start">
                             <h4 className="font-semibold text-md mb-2">{trend.trend}</h4>
@@ -585,7 +585,7 @@ const ProfileEnhancer: React.FC = () => {
                       <Award className="mr-2 h-5 w-5 text-indigo-600" />
                       ATS Optimization
                     </h3>
-                    {enhancementResult.atsOptimization ? (
+                    {enhancementResult?.atsOptimization ? (
                       <>
                         <div className="mb-4">
                           <div className="flex items-center justify-between mb-2">
@@ -662,7 +662,7 @@ const ProfileEnhancer: React.FC = () => {
                           Immediate Actions
                         </h4>
                         <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.immediate.map((action, i) => (
+                          {enhancementResult.actionPlan.immediate?.map((action, i) => (
                             <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
                           ))}
                         </ul>
@@ -674,7 +674,7 @@ const ProfileEnhancer: React.FC = () => {
                           Short-Term Actions (1 month)
                         </h4>
                         <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.shortTerm.map((action, i) => (
+                          {enhancementResult.actionPlan.shortTerm?.map((action, i) => (
                             <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
                           ))}
                         </ul>
@@ -686,7 +686,7 @@ const ProfileEnhancer: React.FC = () => {
                           Long-Term Actions (3-6 months)
                         </h4>
                         <ul className="space-y-2 pl-5">
-                          {enhancementResult.actionPlan.longTerm.map((action, i) => (
+                          {enhancementResult.actionPlan.longTerm?.map((action, i) => (
                             <li key={i} className="text-sm text-gray-700 list-disc">{action}</li>
                           ))}
                         </ul>
@@ -707,14 +707,14 @@ const ProfileEnhancer: React.FC = () => {
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
               <div className="mb-4">
                 <h4 className="font-medium text-amber-800 mb-2">Differentiation Strategy</h4>
-                <p className="text-gray-700">{enhancementResult.competitiveAdvantage.differentiationStrategy}</p>
+                <p className="text-gray-700">{enhancementResult?.competitiveAdvantage?.differentiationStrategy}</p>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-medium text-amber-800 mb-2">Unique Selling Points</h4>
                   <ul className="space-y-2">
-                    {enhancementResult.competitiveAdvantage.uniqueSellingPoints.map((point, i) => (
+                    {enhancementResult?.competitiveAdvantage?.uniqueSellingPoints?.map((point, i) => (
                       <li key={i} className="flex items-start">
                         <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -728,14 +728,14 @@ const ProfileEnhancer: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-amber-800 mb-2">Emerging Opportunities</h4>
                   <ul className="space-y-2">
-                    {enhancementResult.competitiveAdvantage.emergingOpportunities.map((opportunity, i) => (
+                    {enhancementResult?.competitiveAdvantage?.emergingOpportunities?.map((opportunity, i) => (
                       <li key={i} className="flex items-start">
                         <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
                         <span className="text-gray-700">{opportunity}</span>
                       </li>
-                    ))}
+                    )) || <li className="text-gray-500">No emerging opportunities found</li>}
                   </ul>
                 </div>
               </div>
