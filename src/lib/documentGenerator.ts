@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { Document, Paragraph, TextRun, HeadingLevel, Packer } from 'docx';
 import type { CV, ProfileEnhancementResult } from '../types';
+import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export async function generatePDF(cv: CV, language: 'original' | 'english' = 'original') {
   const data = language === 'english' ? cv.parsed_data_english : cv.parsed_data;
@@ -252,160 +254,326 @@ export async function generateWord(cv: CV, language: 'original' | 'english' = 'o
   URL.revokeObjectURL(url);
 }
 
-// New function to generate a PDF from enhancement results
-export async function generateEnhancementPDF(enhancementResult: ProfileEnhancementResult, targetPlatform: string, industryFocus: string) {
-  if (!enhancementResult) return null;
-
-  const doc = new jsPDF();
-  let yPos = 20;
-  const margin = 20;
-  const pageWidth = doc.internal.pageSize.width;
-
-  // Helper function to add text and handle overflow
-  const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-    doc.setFontSize(fontSize);
-    if (isBold) doc.setFont('helvetica', 'bold');
-    else doc.setFont('helvetica', 'normal');
-    
-    const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
-    doc.text(lines, margin, yPos);
-    yPos += (lines.length * fontSize * 0.5) + 5;
-
-    // Add new page if needed
-    if (yPos > doc.internal.pageSize.height - margin) {
-      doc.addPage();
-      yPos = margin;
-    }
-  };
-
-  // Title and metadata
-  addText('Profile Enhancement Report', 24, true);
-  addText(`Target Platform: ${targetPlatform}`, 12);
-  addText(`Industry Focus: ${industryFocus}`, 12);
-  addText(`Generated: ${new Date().toLocaleDateString()}`, 12);
-  yPos += 10;
-
-  // Profile Score
-  if (enhancementResult.profileScore) {
-    addText('Profile Score Summary', 16, true);
-    addText(`Current Score: ${enhancementResult.profileScore.current}%`, 12);
-    addText(`Potential Score: ${enhancementResult.profileScore.potential}%`, 12);
-    
-    if (enhancementResult.profileScore.keyFactors && enhancementResult.profileScore.keyFactors.length > 0) {
-      addText('Key Factors:', 12, true);
-      enhancementResult.profileScore.keyFactors.forEach(factor => {
-        addText(`• ${factor}`, 10);
-      });
-    }
-    yPos += 10;
-  }
-
-  // Keyword Analysis
-  if (enhancementResult.keywordAnalysis && enhancementResult.keywordAnalysis.length > 0) {
-    addText('Keyword Analysis', 16, true);
-    enhancementResult.keywordAnalysis.forEach(keyword => {
-      addText(`${keyword.keyword} (Relevance: ${keyword.relevance}%)`, 14, true);
-      addText(`Placement: ${keyword.placement}`, 10);
-      addText(`Recommended Usage: ${keyword.recommendedUsage}`, 10);
-      yPos += 5;
-    });
-    yPos += 10;
-  }
-
-  // Section Enhancements
-  if (enhancementResult.sectionEnhancements && enhancementResult.sectionEnhancements.length > 0) {
-    addText('Section Enhancements', 16, true);
-    enhancementResult.sectionEnhancements.forEach(section => {
-      addText(section.section, 14, true);
-      addText('Current Content:', 10, true);
-      addText(section.currentContent, 10);
-      addText('Enhanced Content:', 10, true);
-      addText(section.enhancedContent, 10);
-      addText('Rationale:', 10, true);
-      addText(section.rationale, 10);
-      yPos += 10;
-    });
-  }
-
-  // Industry Trends
-  if (enhancementResult.industryTrends && enhancementResult.industryTrends.length > 0) {
-    addText('Industry Trends', 16, true);
-    enhancementResult.industryTrends.forEach(trend => {
-      addText(`${trend.trend} (Relevance: ${trend.relevance}%)`, 12, true);
-      addText(`Implementation: ${trend.implementation}`, 10);
-      yPos += 5;
-    });
-    yPos += 10;
-  }
-
-  // ATS Optimization
-  if (enhancementResult.atsOptimization) {
-    addText('ATS Optimization', 16, true);
-    addText(`Current ATS Compatibility Score: ${enhancementResult.atsOptimization.currentScore}%`, 12);
-    
-    if (enhancementResult.atsOptimization.recommendations && enhancementResult.atsOptimization.recommendations.length > 0) {
-      addText('Recommendations:', 12, true);
-      enhancementResult.atsOptimization.recommendations.forEach(rec => {
-        addText(`• ${rec}`, 10);
-      });
-    }
-    
-    if (enhancementResult.atsOptimization.keywordsToAdd && enhancementResult.atsOptimization.keywordsToAdd.length > 0) {
-      addText('Keywords to Add:', 12, true);
-      addText(enhancementResult.atsOptimization.keywordsToAdd.join(', '), 10);
-    }
-    yPos += 10;
-  }
-
-  // Action Plan
-  if (enhancementResult.actionPlan) {
-    addText('Action Plan', 16, true);
-    
-    if (enhancementResult.actionPlan.immediate && enhancementResult.actionPlan.immediate.length > 0) {
-      addText('Immediate Actions:', 12, true);
-      enhancementResult.actionPlan.immediate.forEach(action => {
-        addText(`• ${action}`, 10);
-      });
-    }
-    
-    if (enhancementResult.actionPlan.shortTerm && enhancementResult.actionPlan.shortTerm.length > 0) {
-      addText('Short-Term Actions (1 month):', 12, true);
-      enhancementResult.actionPlan.shortTerm.forEach(action => {
-        addText(`• ${action}`, 10);
-      });
-    }
-    
-    if (enhancementResult.actionPlan.longTerm && enhancementResult.actionPlan.longTerm.length > 0) {
-      addText('Long-Term Actions (3-6 months):', 12, true);
-      enhancementResult.actionPlan.longTerm.forEach(action => {
-        addText(`• ${action}`, 10);
-      });
-    }
-  }
-
-  // Competitive Advantage
-  if (enhancementResult.competitiveAdvantage) {
-    addText('Competitive Advantage Strategy', 16, true);
-    
-    if (enhancementResult.competitiveAdvantage.differentiationStrategy) {
-      addText('Differentiation Strategy:', 12, true);
-      addText(enhancementResult.competitiveAdvantage.differentiationStrategy, 10);
-    }
-    
-    if (enhancementResult.competitiveAdvantage.uniqueSellingPoints && enhancementResult.competitiveAdvantage.uniqueSellingPoints.length > 0) {
-      addText('Unique Selling Points:', 12, true);
-      enhancementResult.competitiveAdvantage.uniqueSellingPoints.forEach(point => {
-        addText(`• ${point}`, 10);
-      });
-    }
-    
-    if (enhancementResult.competitiveAdvantage.emergingOpportunities && enhancementResult.competitiveAdvantage.emergingOpportunities.length > 0) {
-      addText('Emerging Opportunities:', 12, true);
-      enhancementResult.competitiveAdvantage.emergingOpportunities.forEach(opportunity => {
-        addText(`• ${opportunity}`, 10);
-      });
-    }
-  }
-
-  return doc.save('profile-enhancement.pdf');
+// Helper function to strip HTML tags
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>?/gm, '');
 }
+
+// Improved PDF generation for enhanced profile
+export const generateEnhancementPDF = async (
+  enhancementResult: ProfileEnhancementResult,
+  targetPlatform: string,
+  jobTitle: string
+): Promise<void> => {
+  try {
+    // Create new PDF document
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Add fonts
+    doc.setFont('helvetica', 'normal');
+    
+    // Set up page margins and dimensions
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Add title and subheader
+    doc.setFontSize(20);
+    doc.setTextColor(59, 130, 246); // Blue
+    doc.text('Currículum Optimizado', pageWidth / 2, margin, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139); // Slate gray
+    doc.text(`Para: ${jobTitle}`, pageWidth / 2, margin + 8, { align: 'center' });
+    
+    // Add horizontal line
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, margin + 12, pageWidth - margin, margin + 12);
+    
+    let yPosition = margin + 20;
+    
+    // Profile Summary Section
+    const summarySection = enhancementResult.sectionEnhancements.find(section => 
+      section.section.toLowerCase().includes('summary') || 
+      section.section.toLowerCase().includes('perfil') || 
+      section.section.toLowerCase().includes('resumen')
+    );
+    
+    if (summarySection) {
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Perfil Profesional', margin, yPosition);
+      yPosition += 6;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      // Handle text wrapping
+      const summaryText = stripHtml(summarySection.enhancedContent);
+      const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
+      doc.text(splitSummary, margin, yPosition);
+      yPosition += splitSummary.length * 5 + 8;
+    }
+    
+    // Skills Section
+    doc.setFontSize(14);
+    doc.setTextColor(30, 64, 175); // Indigo
+    doc.text('Habilidades Clave', margin, yPosition);
+    yPosition += 6;
+    
+    if (enhancementResult.keywordAnalysis && enhancementResult.keywordAnalysis.length > 0) {
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      // Create skill pill boxes
+      const skillsPerRow = 3;
+      const skillPillWidth = contentWidth / skillsPerRow - 5;
+      const skillPillHeight = 8;
+      
+      for (let i = 0; i < enhancementResult.keywordAnalysis.length; i++) {
+        const rowIndex = Math.floor(i / skillsPerRow);
+        const colIndex = i % skillsPerRow;
+        const xPos = margin + (colIndex * (skillPillWidth + 5));
+        const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
+        
+        // Draw skill pill
+        doc.setFillColor(240, 249, 255); // Light blue background
+        doc.setDrawColor(210, 227, 252); // Blue border
+        doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+        
+        // Add skill text
+        doc.setTextColor(30, 64, 175); // Indigo
+        const skill = enhancementResult.keywordAnalysis[i].keyword;
+        doc.text(skill, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+      }
+      
+      // Update y position after skills
+      const skillRows = Math.ceil(enhancementResult.keywordAnalysis.length / skillsPerRow);
+      yPosition += (skillRows * (skillPillHeight + 4)) + 8;
+    }
+    
+    // Experience Section
+    const experienceSection = enhancementResult.sectionEnhancements.find(section => 
+      section.section.toLowerCase().includes('experience') || 
+      section.section.toLowerCase().includes('experiencia')
+    );
+    
+    if (experienceSection) {
+      // Add new page if there's not enough space
+      if (yPosition > pageHeight - 100) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Experiencia Profesional', margin, yPosition);
+      yPosition += 6;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      // Handle HTML content - strip tags and create paragraphs
+      const experienceText = stripHtml(experienceSection.enhancedContent);
+      const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+      doc.text(splitExperience, margin, yPosition);
+      yPosition += splitExperience.length * 5 + 8;
+    }
+    
+    // Education Section
+    const educationSection = enhancementResult.sectionEnhancements.find(section => 
+      section.section.toLowerCase().includes('education') || 
+      section.section.toLowerCase().includes('educación') ||
+      section.section.toLowerCase().includes('formación')
+    );
+    
+    if (educationSection) {
+      // Add new page if there's not enough space
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Educación', margin, yPosition);
+      yPosition += 6;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      // Handle HTML content - strip tags and create paragraphs
+      const educationText = stripHtml(educationSection.enhancedContent);
+      const splitEducation = doc.splitTextToSize(educationText, contentWidth);
+      doc.text(splitEducation, margin, yPosition);
+      yPosition += splitEducation.length * 5 + 8;
+    }
+    
+    // Certifications Section
+    const certificationsSection = enhancementResult.sectionEnhancements.find(section => 
+      section.section.toLowerCase().includes('certif')
+    );
+    
+    if (certificationsSection) {
+      // Add new page if there's not enough space
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Certificaciones', margin, yPosition);
+      yPosition += 6;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      // Handle HTML content - strip tags and create paragraphs
+      const certificationsText = stripHtml(certificationsSection.enhancedContent);
+      const splitCertifications = doc.splitTextToSize(certificationsText, contentWidth);
+      doc.text(splitCertifications, margin, yPosition);
+      yPosition += splitCertifications.length * 5 + 8;
+    }
+    
+    // Add footer with date
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    const date = new Date().toLocaleDateString();
+    doc.text(`Generado: ${date}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+    
+    // Save the PDF
+    doc.save(`CV_Optimizado_${jobTitle.replace(/\s+/g, '_')}.pdf`);
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  }
+};
+
+// Generate PDF from CV data
+export const generateCVPDF = async (cv: CV): Promise<void> => {
+  try {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(20);
+    doc.text('Currículum Vitae', 105, 15, { align: 'center' });
+    
+    // Add personal info
+    if (cv.parsed_data) {
+      doc.setFontSize(16);
+      doc.text(cv.parsed_data.name || 'Name not found', 105, 25, { align: 'center' });
+      
+      doc.setFontSize(10);
+      const contactInfo = [
+        cv.parsed_data.email,
+        cv.parsed_data.phone,
+        cv.parsed_data.location
+      ].filter(Boolean).join(' | ');
+      
+      doc.text(contactInfo, 105, 30, { align: 'center' });
+      
+      // Add summary if available
+      if (cv.parsed_data.summary) {
+        doc.setFontSize(12);
+        doc.text('Resumen Profesional', 20, 40);
+        doc.setFontSize(10);
+        
+        const splitSummary = doc.splitTextToSize(cv.parsed_data.summary, 170);
+        doc.text(splitSummary, 20, 45);
+      }
+      
+      let yPosition = 50 + (cv.parsed_data.summary ? 15 : 0);
+      
+      // Add skills
+      if (cv.parsed_data.skills && cv.parsed_data.skills.length > 0) {
+        doc.setFontSize(12);
+        doc.text('Habilidades', 20, yPosition);
+        doc.setFontSize(10);
+        
+        const skillsText = cv.parsed_data.skills.join(', ');
+        const splitSkills = doc.splitTextToSize(skillsText, 170);
+        doc.text(splitSkills, 20, yPosition + 5);
+        
+        yPosition += 10 + splitSkills.length * 5;
+      }
+      
+      // Add work experience
+      if (cv.parsed_data.work_experience && cv.parsed_data.work_experience.length > 0) {
+        doc.setFontSize(12);
+        doc.text('Experiencia Laboral', 20, yPosition);
+        
+        // Add a new page if needed
+        if (yPosition > 220) {
+          doc.addPage();
+          yPosition = 20;
+        } else {
+          yPosition += 5;
+        }
+        
+        // Add each work experience
+        cv.parsed_data.work_experience.forEach((experience, index) => {
+          if (yPosition > 260) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          
+          doc.setFontSize(11);
+          doc.text(`${experience.title || 'Position'} at ${experience.company || 'Company'}`, 20, yPosition + 5);
+          
+          doc.setFontSize(10);
+          doc.text(experience.dates || '', 20, yPosition + 10);
+          
+          if (experience.description) {
+            const splitDescription = doc.splitTextToSize(experience.description, 170);
+            doc.text(splitDescription, 20, yPosition + 15);
+            yPosition += 20 + splitDescription.length * 5;
+          } else {
+            yPosition += 15;
+          }
+        });
+      }
+      
+      // Add education
+      if (cv.parsed_data.education && cv.parsed_data.education.length > 0) {
+        if (yPosition > 220) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        doc.setFontSize(12);
+        doc.text('Educación', 20, yPosition);
+        yPosition += 5;
+        
+        // Add each education entry
+        cv.parsed_data.education.forEach((education, index) => {
+          if (yPosition > 260) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          
+          doc.setFontSize(11);
+          doc.text(`${education.degree || 'Degree'} - ${education.institution || 'Institution'}`, 20, yPosition + 5);
+          
+          doc.setFontSize(10);
+          doc.text(education.dates || '', 20, yPosition + 10);
+          
+          yPosition += 15;
+        });
+      }
+    }
+    
+    // Save the PDF
+    doc.save(`${cv.filename || 'cv'}.pdf`);
+    
+  } catch (error) {
+    console.error('Error generating CV PDF:', error);
+    throw error;
+  }
+};
