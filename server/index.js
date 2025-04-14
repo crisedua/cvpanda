@@ -1182,39 +1182,151 @@ app.post('/api/enhance-profile', async (req, res) => {
 
   try {
     // 1. Fetch the original CV data using cvId from Supabase
-    // TODO: Implement Supabase fetch logic here
-    const originalCvData = { /* ... fetched data ... */ }; 
-    if (!originalCvData) {
-       console.error('[enhance-profile] CV not found in database', { cvId });
-       return res.status(404).json({ success: false, error: 'Original CV not found' });
+    console.log('[enhance-profile] Fetching CV data from Supabase', { cvId });
+    const { data: cv, error: cvError } = await supabase
+      .from('parsed_cvs')
+      .select('*')
+      .eq('id', cvId)
+      .single();
+    
+    if (cvError) {
+      console.error('[enhance-profile] Failed to fetch CV from Supabase', { cvId, error: cvError });
+      return res.status(404).json({ success: false, error: 'Original CV not found' });
     }
-    console.log('[enhance-profile] Original CV data fetched', { cvId });
-
-    // 2. Call OpenAI (or other service) to get enhancement suggestions
-    // TODO: Implement the core enhancement logic here
-    // This would involve creating a prompt with originalCvData, targetPlatform, etc.
-    // and parsing the AI response into the ProfileEnhancementResult structure.
-    console.log('[enhance-profile] Calling enhancement service...', { cvId });
-    const enhancementResult = { 
-      // --- DUMMY DATA - REPLACE WITH ACTUAL AI RESPONSE --- 
-      profileScore: { current: 75, potential: 90, keyFactors: ['Added keywords', 'Improved summary'] },
-      keywordAnalysis: [{ keyword: 'Node.js', relevance: 'High', suggestions: ['Mention specific frameworks'] }],
-      sectionEnhancements: [
-        { section: 'summary', currentContent: 'Old summary', enhancedContent: 'New improved summary...', rationale: 'More impactful language' },
-        { section: 'work_experience_0', currentContent: 'Did stuff', enhancedContent: 'Achieved X by doing Y using Z', rationale: 'Quantifiable results' }
-      ],
-      industryTrends: [{ trend: 'AI Integration', relevance: 'Medium', action: 'Consider adding AI project experience' }],
-      atsOptimization: { score: 80, recommendations: ['Use standard section headers'] },
-      competitiveAdvantage: { uniqueSellingPoints: ['Strong project portfolio'], areasForImprovement: ['Add certifications'] },
-      actionPlan: { immediate: ['Update summary'], shortTerm: ['Add metrics to achievements'], longTerm: ['Get cloud certification'] },
-      metadata: { processedAt: new Date().toISOString(), targetPlatform, industryFocus, careerLevel }
-      // --- END DUMMY DATA ---
+    
+    // Extract CV content from the parsed data
+    const cvContent = {
+      name: cv.name,
+      email: cv.email,
+      phone: cv.phone,
+      location: cv.location,
+      job_title: cv.job_title,
+      summary: cv.summary,
+      skills: cv.skills || [],
+      work_experience: cv.work_experience || [],
+      education: cv.education || [],
+      parsed_data: cv.parsed_data
     };
-    console.log('[enhance-profile] Enhancement service responded', { cvId });
+    console.log('[enhance-profile] Original CV data fetched', { cvId, hasData: !!cvContent });
 
-    // 3. Send the result back to the frontend
-    res.json({ success: true, enhancedData: enhancementResult });
-
+    // 2. Call OpenAI to get enhancement suggestions
+    console.log('[enhance-profile] Calling OpenAI enhancement service...', { cvId });
+    
+    // Prepare prompt for OpenAI
+    const systemPrompt = `You are an expert resume writer and career advisor specialized in tailoring resumes for specific job positions.
+    Your task is to enhance and optimize a CV/resume to maximize the candidate's chances of getting an interview for a specific job role.
+    Analyze the CV provided and then enhance it based on the target job title and description, focusing on ${targetPlatform === 'linkedin' ? 'LinkedIn profile optimization' : 'resume format for job applications'}.`;
+    
+    const userPrompt = `
+    # CV/Resume Information
+    ${JSON.stringify(cvContent, null, 2)}
+    
+    # Target Job Information
+    Job Title: ${industryFocus}
+    Role Level/Description: ${careerLevel}
+    
+    Enhance this resume to make it more effective for the specified job. Focus on these aspects:
+    1. Improve the professional summary to highlight relevant experience and skills
+    2. Identify and emphasize keywords relevant to the industry and job
+    3. Restructure work experiences to highlight achievements that align with the job requirements
+    4. Suggest improvements for education and skills sections
+    
+    Return a JSON object with the following structure. Make sure the response is properly formatted JSON:
+    {
+      "profileScore": {
+        "current": number, // current CV score (0-100)
+        "potential": number, // potential score after enhancements (0-100)
+        "keyFactors": [string] // list of key factors affecting the score
+      },
+      "keywordAnalysis": [
+        {
+          "keyword": string, // industry-relevant keyword
+          "relevance": number, // relevance to the job (0-100)
+          "placement": string, // where to place this keyword
+          "recommendedUsage": string // how to use this keyword effectively
+        }
+      ],
+      "sectionEnhancements": [
+        {
+          "section": string, // section name (e.g., "summary", "experience", "education")
+          "currentContent": string, // current content in that section
+          "enhancedContent": string, // improved content for that section
+          "rationale": string // explanation for the changes
+        }
+      ],
+      "industryTrends": [
+        {
+          "trend": string, // relevant industry trend
+          "relevance": number, // how relevant this trend is (0-100)
+          "implementation": string // how to implement this trend in the resume
+        }
+      ],
+      "atsOptimization": {
+        "currentScore": number, // current ATS compatibility score (0-100)
+        "recommendations": [string], // ATS optimization recommendations
+        "keywordsToAdd": [string] // keywords to add for better ATS scanning
+      },
+      "actionPlan": {
+        "immediate": [string], // immediate actions to improve the resume
+        "shortTerm": [string], // short-term improvement actions
+        "longTerm": [string] // long-term career development suggestions
+      },
+      "competitiveAdvantage": {
+        "differentiationStrategy": string, // how to stand out from other candidates
+        "uniqueSellingPoints": [string], // unique selling points to emphasize
+        "emergingOpportunities": [string] // emerging opportunities to target
+      },
+      "keywordOptimization": [
+        {
+          "original": string, // original text in the resume
+          "suggested": string, // improved version
+          "reason": string // reason for the change
+        }
+      ],
+      "metadata": {
+        "processedAt": string, // current timestamp
+        "targetPlatform": string, // the platform being optimized for
+        "industryFocus": string, // the industry being targeted
+        "careerLevel": string // the career level being targeted
+      }
+    }`;
+    
+    // Call OpenAI
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview', // or any available model that fits your needs
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' }
+      });
+      
+      // Parse the response
+      const enhancementResult = JSON.parse(completion.choices[0].message.content);
+      console.log('[enhance-profile] OpenAI enhancement completed', { cvId });
+      
+      // Add metadata if not present
+      if (!enhancementResult.metadata) {
+        enhancementResult.metadata = {
+          processedAt: new Date().toISOString(),
+          targetPlatform,
+          industryFocus,
+          careerLevel
+        };
+      }
+      
+      // 3. Send the result back to the frontend
+      res.json({ success: true, enhancedData: enhancementResult });
+    } catch (openaiError) {
+      console.error('[enhance-profile] OpenAI API error', { error: openaiError });
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to enhance profile with AI', 
+        details: openaiError.message 
+      });
+    }
   } catch (error) {
     console.error('[enhance-profile] Error during enhancement process', { cvId, error: error.message });
     res.status(500).json({ success: false, error: 'Failed to enhance profile', details: error.message });
