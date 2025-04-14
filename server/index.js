@@ -1215,10 +1215,11 @@ app.post('/api/enhance-profile', async (req, res) => {
     // Prepare prompt for OpenAI
     const systemPrompt = `You are an expert resume writer and career advisor specialized in tailoring resumes for specific job positions.
     Your task is to enhance and optimize a CV/resume to maximize the candidate's chances of getting an interview for a specific job role.
-    Analyze the CV provided and then enhance it based on the target job title and description, focusing on ${targetPlatform === 'linkedin' ? 'LinkedIn profile optimization' : 'resume format for job applications'}.`;
+    Analyze the CV provided and then enhance it based on the target job title and description, focusing on ${targetPlatform === 'linkedin' ? 'LinkedIn profile optimization' : 'resume format for job applications'}.
+    **IMPORTANT**: Your response MUST include all sections from the original CV (summary, skills, work_experience, education, and any other sections present in the provided CV JSON). For sections you enhance, provide the 'enhancedContent'. For sections you do not enhance, return the 'currentContent' as the 'enhancedContent'. Do NOT omit any sections from the original CV.`;
     
     const userPrompt = `
-    # CV/Resume Information
+    # CV/Resume Information (JSON format)
     ${JSON.stringify(cvContent, null, 2)}
     
     # Target Job Information
@@ -1226,12 +1227,13 @@ app.post('/api/enhance-profile', async (req, res) => {
     Role Level/Description: ${careerLevel}
     
     Enhance this resume to make it more effective for the specified job. Focus on these aspects:
-    1. Improve the professional summary to highlight relevant experience and skills
-    2. Identify and emphasize keywords relevant to the industry and job
-    3. Restructure work experiences to highlight achievements that align with the job requirements
-    4. Suggest improvements for education and skills sections
+    1. Improve the professional summary to highlight relevant experience and skills.
+    2. Identify and emphasize keywords relevant to the industry and job.
+    3. Restructure work experiences to highlight quantifiable achievements that align with the job requirements.
+    4. Suggest improvements for education and skills sections.
+    5. Review any additional sections (e.g., projects, certifications) and enhance them if relevant to the target job.
     
-    Return a JSON object with the following structure. Make sure the response is properly formatted JSON:
+    Return a JSON object with the following structure. Ensure the response is properly formatted JSON and adheres to the IMPORTANT instruction in the system prompt regarding section inclusion:
     {
       "profileScore": {
         "current": number, // current CV score (0-100)
@@ -1248,10 +1250,10 @@ app.post('/api/enhance-profile', async (req, res) => {
       ],
       "sectionEnhancements": [
         {
-          "section": string, // section name (e.g., "summary", "experience", "education")
-          "currentContent": string, // current content in that section
-          "enhancedContent": string, // improved content for that section
-          "rationale": string // explanation for the changes
+          "section": string, // section name (e.g., "summary", "work_experience", "education", "projects", "certifications") - MUST INCLUDE ALL ORIGINAL SECTIONS
+          "currentContent": string, // original content in that section (can be brief or omitted if returning enhanced content)
+          "enhancedContent": string, // improved content for the section OR the original content if no enhancements were made
+          "rationale": string // explanation ONLY if changes were made, otherwise empty string
         }
       ],
       "industryTrends": [
