@@ -96,6 +96,7 @@ export interface ProfileEnhancementResult {
   };
   keywordAnalysis: ProfileKeywordAnalysis[];
   sectionEnhancements: ProfileSectionEnhancement[];
+  originalContent?: string;
   industryTrends: IndustryTrend[];
   atsOptimization: AtsOptimization;
   competitiveAdvantage: CompetitiveAdvantage;

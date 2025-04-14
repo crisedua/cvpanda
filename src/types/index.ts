@@ -179,6 +179,7 @@ export interface ProfileEnhancementResult {
     enhancedContent: string;
     rationale: string;
   }>;
+  originalContent?: string;
   industryTrends: Array<{
     trend: string;
     relevance: number;

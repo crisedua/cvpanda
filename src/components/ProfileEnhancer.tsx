@@ -419,44 +419,80 @@ const ProfileEnhancer: React.FC = () => {
             {/* Original CV - Left side */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
               <h3 className="text-xl font-semibold mb-4 border-b pb-2 border-gray-200">
-                Perfil Profesional
+                Tu CV Original
               </h3>
-              <p className="text-gray-600 mb-6">
-                Old summary
-              </p>
-
-              <h3 className="text-xl font-semibold mb-4 border-b pb-2 border-gray-200">
-                Experiencia Profesional
-              </h3>
-              <p className="text-gray-600">
-                Did stuff
-              </p>
+              <div className="prose prose-sm max-w-none text-gray-600">
+                {enhancementResult?.originalContent ? (
+                  <div dangerouslySetInnerHTML={{ __html: enhancementResult.originalContent }} />
+                ) : (
+                  <p>No se pudo cargar el contenido original del CV.</p>
+                )}
+              </div>
             </div>
 
             {/* Optimized CV - Right side */}
             <div className="bg-white border-2 border-indigo-200 rounded-lg p-6">
               <h3 className="text-xl font-semibold mb-4 border-b pb-2 border-indigo-100">
-                Perfil Profesional
+                CV Optimizado
               </h3>
-              <p className="text-gray-800 mb-6">
-                New improved summary...
-              </p>
+              <div className="space-y-5">
+                {/* Profile Summary */}
+                {enhancementResult?.sectionEnhancements?.find(section => 
+                  section.section.toLowerCase().includes('summary') || 
+                  section.section.toLowerCase().includes('perfil') || 
+                  section.section.toLowerCase().includes('resumen')
+                ) && (
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
+                      Perfil Profesional
+                    </h4>
+                    <p className="text-gray-800">
+                      {enhancementResult.sectionEnhancements.find(section => 
+                        section.section.toLowerCase().includes('summary') || 
+                        section.section.toLowerCase().includes('perfil') || 
+                        section.section.toLowerCase().includes('resumen')
+                      )?.enhancedContent}
+                    </p>
+                  </div>
+                )}
 
-              <h3 className="text-xl font-semibold mb-4 border-b pb-2 border-indigo-100">
-                Habilidades Clave
-              </h3>
-              <div className="flex flex-wrap gap-2 mb-6">
-                <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200">
-                  Node.js
-                </span>
+                {/* Skills Section */}
+                <div className="pb-3 border-b border-indigo-100">
+                  <h4 className="font-semibold text-md text-indigo-700 mb-2">
+                    Habilidades Clave
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
+                      <span 
+                        key={index}
+                        className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
+                      >
+                        {keyword.keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Experience Section */}
+                {enhancementResult?.sectionEnhancements?.find(section => 
+                  section.section.toLowerCase().includes('experience') || 
+                  section.section.toLowerCase().includes('experiencia')
+                ) && (
+                  <div className="pb-3 border-b border-indigo-100">
+                    <h4 className="font-semibold text-md text-indigo-700 mb-2">
+                      Experiencia Profesional
+                    </h4>
+                    <div className="prose prose-sm max-w-none prose-indigo">
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult.sectionEnhancements.find(section => 
+                          section.section.toLowerCase().includes('experience') || 
+                          section.section.toLowerCase().includes('experiencia')
+                        )?.enhancedContent || ''
+                      }} />
+                    </div>
+                  </div>
+                )}
               </div>
-
-              <h3 className="text-xl font-semibold mb-4 border-b pb-2 border-indigo-100">
-                Experiencia Profesional
-              </h3>
-              <p className="text-gray-800">
-                Achieved X by doing Y using Z
-              </p>
             </div>
           </div>
         </div>
