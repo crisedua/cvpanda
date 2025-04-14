@@ -276,13 +276,14 @@ const ProfileEnhancer: React.FC = () => {
 
     try {
       console.log('Starting profile enhancement for CV:', selectedCV);
-      console.log('Selected CV content:', selectedCVContent);
-      console.log('API parameters:', {
-        cvId: selectedCV,
-        targetPlatform,
-        industryFocus: jobTitle,
-        careerLevel: jobDescription
-      });
+      
+      // Get the selected CV data directly
+      const selectedCvData = cvs.find(cv => cv.id === selectedCV);
+      console.log('Selected CV data for enhancement:', selectedCvData);
+      
+      if (!selectedCvData) {
+        throw new Error('Selected CV data not found');
+      }
       
       // Call the enhancement API with detailed error logging
       const result = await enhanceProfile(
@@ -296,8 +297,20 @@ const ProfileEnhancer: React.FC = () => {
 
       if (result.success && result.enhancedData) {
         setProgress(100);
-        // Store the original content in the enhancement result
-        result.enhancedData.originalContent = selectedCVContent;
+        
+        // Create a structured HTML representation of the original CV if we have parsed data
+        if (selectedCvData.parsed_data) {
+          console.log('Using parsed_data to create originalContent');
+          const parsedContent = formatParsedDataToHTML(selectedCvData.parsed_data);
+          result.enhancedData.originalContent = parsedContent;
+        } else if (selectedCvData.content) {
+          console.log('Using content field directly');
+          result.enhancedData.originalContent = selectedCvData.content;
+        } else {
+          console.log('No original content available');
+          result.enhancedData.originalContent = '<p>No se pudo cargar el contenido original del CV.</p>';
+        }
+        
         setEnhancementResult(result.enhancedData);
       } else {
         console.error('Enhancement result is not valid:', result.error || 'Unknown error');
