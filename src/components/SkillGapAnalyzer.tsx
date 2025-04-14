@@ -82,9 +82,49 @@ const SkillGapAnalyzer = () => {
   useEffect(() => {
     if (user) {
       fetchCVs();
-      fetchSavedJobs();
+      checkAndCreateSavedJobsTable();
     }
   }, [user]);
+
+  const checkAndCreateSavedJobsTable = async () => {
+    try {
+      // Check if table exists
+      const { data: tableExists, error: checkError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'saved_jobs')
+        .single();
+
+      if (checkError) {
+        // Try direct query to check if we get a 42P01 (table doesn't exist)
+        const { error } = await supabase.from('saved_jobs').select('count').limit(1);
+        
+        if (error && error.code === '42P01') {
+          console.log('The saved_jobs table does not exist. Creating it now...');
+          
+          // Execute SQL to create the table
+          const { error: createError } = await supabase.rpc('create_saved_jobs_table');
+          
+          if (createError) {
+            console.error('Error creating saved_jobs table:', createError);
+            alert('Error setting up the saved jobs feature. Please contact support.');
+          } else {
+            console.log('Successfully created saved_jobs table');
+            // Now try fetching saved jobs
+            fetchSavedJobs();
+          }
+        }
+      } else {
+        // Table exists, fetch saved jobs
+        fetchSavedJobs();
+      }
+    } catch (err) {
+      console.error('Error checking/creating saved_jobs table:', err);
+      // Continue anyway
+      fetchSavedJobs();
+    }
+  };
 
   const fetchCVs = async () => {
     if (!user) return;
@@ -133,11 +173,20 @@ const SkillGapAnalyzer = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        // If the table doesn't exist, just set empty array and don't throw
+        if (fetchError.code === '42P01') {
+          console.warn('Saved jobs table does not exist yet:', fetchError.message);
+          setSavedJobs([]);
+          return;
+        }
+        throw fetchError;
+      }
       setSavedJobs(data || []);
     } catch (err) {
       console.error('Error fetching saved jobs:', err);
       // Non-critical error, don't show to user
+      setSavedJobs([]);
     }
   };
 
@@ -328,7 +377,7 @@ const SkillGapAnalyzer = () => {
               </div>
 
               {/* Saved Jobs */}
-              {savedJobs.length > 0 && (
+              {savedJobs && savedJobs.length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {t('skillGap.savedJobs')}

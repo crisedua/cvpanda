@@ -17,6 +17,7 @@ import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoadingScreen from './components/LoadingScreen';
 import JobSearch from './components/JobSearch';
+import DebugInfo from './components/DebugInfo.jsx';
 import './i18n';
 
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) => {
@@ -205,6 +206,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="/debug" element={<DebugInfo />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
