@@ -89,11 +89,28 @@ const ProfileEnhancer: React.FC = () => {
         const selectedCvData = cvs.find(cv => cv.id === selectedCV);
         console.log("Selected CV data:", selectedCvData);
         
+        // Try to get the original file first
+        if (selectedCvData?.file_path) {
+          console.log("Attempting to get original file from storage");
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/cvs/${selectedCV}/download`);
+            if (response.ok) {
+              const fileContent = await response.text();
+              console.log("Successfully retrieved original file content");
+              setSelectedCVContent(fileContent);
+              return;
+            }
+          } catch (error) {
+            console.error('Error fetching original file:', error);
+            // Continue to fallbacks
+          }
+        }
+        
+        // Fallback to existing content or parsed data
         if (selectedCvData?.content) {
           console.log("Using CV content from local data");
           setSelectedCVContent(selectedCvData.content);
         } else if (selectedCvData?.parsed_data) {
-          // Use parsed_data if content is not available
           console.log("Using parsed_data as content");
           const parsedContent = formatParsedDataToHTML(selectedCvData.parsed_data);
           setSelectedCVContent(parsedContent);
@@ -745,145 +762,143 @@ const ProfileEnhancer: React.FC = () => {
 
           {/* Formatted Resume View */}
           {showFormattedResume ? (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8 max-w-4xl mx-auto">
-              <div ref={resumeRef} className="resume-container font-sans text-gray-800 leading-relaxed p-8">
-                <div className="resume-header mb-6 border-b border-gray-200 pb-4">
-                  {/* Name and Personal Info */}
-                  <h1 className="text-3xl font-bold text-indigo-800">
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.name || 'Nombre Profesional'}
-                  </h1>
-                  
-                  <div className="text-md text-gray-600 mt-2">
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title && (
-                      <p className="font-semibold mb-1">
-                        {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title}
-                      </p>
-                    )}
-                    
-                    <p className="flex flex-wrap gap-2">
-                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email && (
-                        <span>
-                          <strong className="text-gray-700">Email:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email}
-                        </span>
-                      )}
-                      
-                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone && (
-                        <span>
-                          <strong className="text-gray-700">Tel:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone}
-                        </span>
-                      )}
-                      
-                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location && (
-                        <span>
-                          <strong className="text-gray-700">Ubicación:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location}
-                        </span>
-                      )}
-                    </p>
-                    
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url && (
-                      <p className="mt-1">
-                        <strong className="text-gray-700">LinkedIn:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url}
-                      </p>
-                    )}
-                  </div>
+            <div ref={resumeRef} className="resume-container bg-white rounded-lg shadow-md p-8 my-4 max-w-4xl mx-auto">
+              {/* Personal Information Header */}
+              <div className="resume-header border-b pb-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.name || 'No Name'}
+                </h1>
+                {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title && (
+                  <p className="text-xl text-gray-600 mt-1">
+                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title}
+                  </p>
+                )}
+                <div className="mt-3 text-gray-600 flex flex-wrap gap-3">
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email && (
+                    <div className="flex items-center">
+                      <span className="font-semibold mr-1">Email:</span>
+                      <span>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email}</span>
+                    </div>
+                  )}
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone && (
+                    <div className="flex items-center">
+                      <span className="font-semibold mr-1">Phone:</span>
+                      <span>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone}</span>
+                    </div>
+                  )}
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location && (
+                    <div className="flex items-center">
+                      <span className="font-semibold mr-1">Location:</span>
+                      <span>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location}</span>
+                    </div>
+                  )}
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url && (
+                    <div className="flex items-center">
+                      <span className="font-semibold mr-1">LinkedIn:</span>
+                      <span>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url}</span>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Professional Profile Section */}
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Perfil Profesional</h2>
-                  <p className="text-gray-700">{enhancementResult.sectionEnhancements?.find(section => 
-                    section?.section?.toLowerCase().includes('summary') || 
-                    section?.section?.toLowerCase().includes('perfil') || 
-                    section?.section?.toLowerCase().includes('resumen'))?.enhancedContent || 
-                    enhancementResult.fullEnhancedCvText?.substring(0, 200) || 
-                    'Perfil profesional optimizado'}</p>
+              </div>
+
+              {/* Professional Profile / Summary Section */}
+              {(enhancementResult?.sectionEnhancements?.find(s => s.section === 'summary')?.enhancedContent || 
+                cvs.find(cv => cv.id === selectedCV)?.parsed_data?.summary) && (
+                <div className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Professional Profile</h2>
+                  <div className="prose" dangerouslySetInnerHTML={{ 
+                    __html: enhancementResult?.sectionEnhancements?.find(s => s.section === 'summary')?.enhancedContent ||
+                            cvs.find(cv => cv.id === selectedCV)?.parsed_data?.summary ||
+                            (enhancementResult?.fullEnhancedCvText ? enhancementResult.fullEnhancedCvText.substring(0, 200) + '...' : '')
+                  }}></div>
                 </div>
-                
-                {/* Skills Section */}
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Habilidades Clave</h2>
+              )}
+
+              {/* Key Skills Section */}
+              {(enhancementResult?.keywordAnalysis?.length > 0 || 
+                (cvs.find(cv => cv.id === selectedCV)?.parsed_data?.skills && 
+                 cvs.find(cv => cv.id === selectedCV)?.parsed_data?.skills?.length > 0)) && (
+                <div className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Key Skills</h2>
                   <div className="flex flex-wrap gap-2">
-                    {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
-                      keyword?.keyword ? (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full border border-gray-200"
-                        >
+                    {enhancementResult?.keywordAnalysis?.length > 0 ? 
+                      enhancementResult?.keywordAnalysis?.map((keyword, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                           {keyword.keyword}
                         </span>
-                      ) : null
-                    ))}
+                      )) : 
+                      cvs.find(cv => cv.id === selectedCV)?.parsed_data?.skills?.map((skill, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                          {skill}
+                        </span>
+                      ))}
                   </div>
                 </div>
-                
-                {/* Experience Section */}
-                {enhancementResult?.sectionEnhancements?.find(section => 
-                  section?.section?.toLowerCase().includes('experience') || 
-                  section?.section?.toLowerCase().includes('experiencia')
-                )?.enhancedContent && (
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Experiencia Profesional</h2>
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
-                      __html: enhancementResult.sectionEnhancements.find(section => 
-                        section?.section?.toLowerCase().includes('experience') || 
-                        section?.section?.toLowerCase().includes('experiencia')
-                      )?.enhancedContent || ''
-                    }} />
-                  </div>
-                )}
-                
-                {/* Education Section */}
-                {enhancementResult?.sectionEnhancements?.find(section => 
-                  section?.section?.toLowerCase().includes('education') || 
-                  section?.section?.toLowerCase().includes('educación') ||
-                  section?.section?.toLowerCase().includes('formación')
-                )?.enhancedContent && (
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Educación</h2>
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
-                      __html: enhancementResult.sectionEnhancements.find(section => 
-                        section?.section?.toLowerCase().includes('education') || 
-                        section?.section?.toLowerCase().includes('educación') ||
-                        section?.section?.toLowerCase().includes('formación')
-                      )?.enhancedContent || ''
-                    }} />
-                  </div>
-                )}
-                
-                {/* Certifications Section */}
-                {enhancementResult?.sectionEnhancements?.find(section => 
-                  section?.section?.toLowerCase().includes('certif')
-                )?.enhancedContent && (
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Certificaciones</h2>
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
-                      __html: enhancementResult.sectionEnhancements.find(section => 
-                        section?.section?.toLowerCase().includes('certif')
-                      )?.enhancedContent || ''
-                    }} />
-                  </div>
-                )}
-                
-                {/* Additional Skills or Sections */}
-                {enhancementResult?.sectionEnhancements?.filter(section => 
-                  !section?.section?.toLowerCase().includes('summary') && 
-                  !section?.section?.toLowerCase().includes('perfil') && 
-                  !section?.section?.toLowerCase().includes('resumen') && 
-                  !section?.section?.toLowerCase().includes('experience') && 
-                  !section?.section?.toLowerCase().includes('experiencia') && 
-                  !section?.section?.toLowerCase().includes('education') && 
-                  !section?.section?.toLowerCase().includes('educación') && 
-                  !section?.section?.toLowerCase().includes('formación') && 
-                  !section?.section?.toLowerCase().includes('certif')
-                ).map((section, index) => (
-                  section?.enhancedContent ? (
-                    <div key={index} className="mb-6">
-                      <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">{section.section}</h2>
-                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.enhancedContent }} />
+              )}
+
+              {/* Work Experience Section */}
+              {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.length > 0 && (
+                <div className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Work Experience</h2>
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.map((exp, index) => (
+                    <div key={index} className="mb-4">
+                      <div className="flex justify-between">
+                        <h3 className="font-semibold text-gray-800">{exp.title || exp.company}</h3>
+                        <span className="text-gray-600 text-sm">{exp.dates}</span>
+                      </div>
+                      <p className="text-gray-700 font-medium">{exp.company}</p>
+                      {exp.location && <p className="text-gray-600 text-sm">{exp.location}</p>}
+                      <div className="mt-2 prose" dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult?.sectionEnhancements?.find(s => 
+                          s.section === 'work_experience')?.enhancedContent || 
+                          exp.description || ''
+                      }}></div>
                     </div>
-                  ) : null
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Education Section */}
+              {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.education?.length > 0 && (
+                <div className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Education</h2>
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.education?.map((edu, index) => (
+                    <div key={index} className="mb-3">
+                      <div className="flex justify-between">
+                        <h3 className="font-semibold text-gray-800">{edu.degree}</h3>
+                        <span className="text-gray-600 text-sm">{edu.dates}</span>
+                      </div>
+                      <p className="text-gray-700">{edu.institution}</p>
+                      {edu.location && <p className="text-gray-600 text-sm">{edu.location}</p>}
+                      {edu.description && <div className="mt-1 prose" dangerouslySetInnerHTML={{ __html: edu.description }}></div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Certifications Section */}
+              {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.certifications?.length > 0 && (
+                <div className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Certifications</h2>
+                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.certifications?.map((cert, index) => (
+                    <div key={index} className="mb-2">
+                      <h3 className="font-semibold text-gray-800">{cert.name}</h3>
+                      {cert.issuer && <p className="text-gray-700">{cert.issuer}</p>}
+                      {cert.date && <p className="text-gray-600 text-sm">{cert.date}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Additional Sections - render any other sections from enhancementResult or original CV */}
+              {enhancementResult?.sectionEnhancements?.filter(s => 
+                !['summary', 'work_experience', 'education', 'skills'].includes(s.section)
+              ).map((section, index) => (
+                <div key={index} className="resume-section mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">{section.section}</h2>
+                  <div className="prose" dangerouslySetInnerHTML={{ __html: section.enhancedContent }}></div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow-md p-6 mb-8 max-w-6xl mx-auto">
