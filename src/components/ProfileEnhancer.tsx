@@ -602,7 +602,7 @@ const ProfileEnhancer: React.FC = () => {
   return (
     <div className="container mx-auto px-4 pb-12">
       <h1 className="text-3xl font-bold text-center mb-8 text-indigo-800">
-        {t('profileOptimizer.title')}
+        Optimizador de Perfil
       </h1>
       
       {error && (
@@ -925,13 +925,13 @@ const ProfileEnhancer: React.FC = () => {
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Perfil Profesional
                       </h3>
-                      <p className="text-gray-800">
-                        {enhancementResult.sectionEnhancements.find(section => 
+                      <div className="text-gray-800" dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult.sectionEnhancements.find(section => 
                           section?.section?.toLowerCase().includes('summary') || 
                           section?.section?.toLowerCase().includes('perfil') || 
                           section?.section?.toLowerCase().includes('resumen')
-                        )?.enhancedContent}
-                      </p>
+                        )?.enhancedContent || ''
+                      }}></div>
                     </div>
                   )}
 
@@ -967,14 +967,12 @@ const ProfileEnhancer: React.FC = () => {
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Experiencia Profesional
                       </h3>
-                      <div className="prose prose-sm max-w-none">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: enhancementResult.sectionEnhancements.find(section => 
-                            section?.section?.toLowerCase().includes('experience') || 
-                            section?.section?.toLowerCase().includes('experiencia')
-                          )?.enhancedContent || ''
-                        }} />
-                      </div>
+                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult.sectionEnhancements.find(section => 
+                          section?.section?.toLowerCase().includes('experience') || 
+                          section?.section?.toLowerCase().includes('experiencia')
+                        )?.enhancedContent || ''
+                      }}></div>
                     </div>
                   )}
 
@@ -988,15 +986,13 @@ const ProfileEnhancer: React.FC = () => {
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Educación
                       </h3>
-                      <div className="prose prose-sm max-w-none">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: enhancementResult.sectionEnhancements.find(section => 
-                            section?.section?.toLowerCase().includes('education') || 
-                            section?.section?.toLowerCase().includes('educación') ||
-                            section?.section?.toLowerCase().includes('formación')
-                          )?.enhancedContent || ''
-                        }} />
-                      </div>
+                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult.sectionEnhancements.find(section => 
+                          section?.section?.toLowerCase().includes('education') || 
+                          section?.section?.toLowerCase().includes('educación') ||
+                          section?.section?.toLowerCase().includes('formación')
+                        )?.enhancedContent || ''
+                      }}></div>
                     </div>
                   )}
                   
@@ -1008,13 +1004,11 @@ const ProfileEnhancer: React.FC = () => {
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Certificaciones
                       </h3>
-                      <div className="prose prose-sm max-w-none">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: enhancementResult.sectionEnhancements.find(section => 
-                            section?.section?.toLowerCase().includes('certif')
-                          )?.enhancedContent || ''
-                        }} />
-                      </div>
+                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
+                        __html: enhancementResult.sectionEnhancements.find(section => 
+                          section?.section?.toLowerCase().includes('certif')
+                        )?.enhancedContent || ''
+                      }}></div>
                     </div>
                   )}
                 </div>
