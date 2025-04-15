@@ -1193,21 +1193,62 @@ app.post('/api/enhance-profile', async (req, res) => {
       console.error('[enhance-profile] Failed to fetch CV from Supabase', { cvId, error: cvError });
       return res.status(404).json({ success: false, error: 'Original CV not found' });
     }
+
+    // Try to get the original file content first
+    let cvContent;
+    if (cv.file_path) {
+      try {
+        console.log('[enhance-profile] Attempting to get original file content', { filePath: cv.file_path });
+        const { data: fileData, error: fileError } = await supabase
+          .storage
+          .from('cvs')
+          .download(cv.file_path);
+
+        if (!fileError && fileData) {
+          // Convert file data to text
+          const fileText = await fileData.text();
+          cvContent = {
+            original_content: fileText,
+            name: cv.name,
+            email: cv.email,
+            phone: cv.phone,
+            location: cv.location,
+            job_title: cv.job_title,
+            summary: cv.summary,
+            skills: cv.skills || [],
+            work_experience: cv.work_experience || [],
+            education: cv.education || [],
+            parsed_data: cv.parsed_data
+          };
+          console.log('[enhance-profile] Successfully retrieved original file content');
+        }
+      } catch (fileError) {
+        console.error('[enhance-profile] Error getting original file:', fileError);
+        // Continue with parsed data
+      }
+    }
+
+    // Fallback to parsed data if original file not available
+    if (!cvContent) {
+      cvContent = {
+        name: cv.name,
+        email: cv.email,
+        phone: cv.phone,
+        location: cv.location,
+        job_title: cv.job_title,
+        summary: cv.summary,
+        skills: cv.skills || [],
+        work_experience: cv.work_experience || [],
+        education: cv.education || [],
+        parsed_data: cv.parsed_data
+      };
+    }
     
-    // Extract CV content from the parsed data
-    const cvContent = {
-      name: cv.name,
-      email: cv.email,
-      phone: cv.phone,
-      location: cv.location,
-      job_title: cv.job_title,
-      summary: cv.summary,
-      skills: cv.skills || [],
-      work_experience: cv.work_experience || [],
-      education: cv.education || [],
-      parsed_data: cv.parsed_data
-    };
-    console.log('[enhance-profile] Original CV data fetched', { cvId, hasData: !!cvContent });
+    console.log('[enhance-profile] CV data prepared', { 
+      hasOriginalContent: !!cvContent.original_content,
+      hasSkills: cvContent.skills.length,
+      hasExperience: cvContent.work_experience.length
+    });
 
     // 2. Call OpenAI to get enhancement suggestions
     console.log('[enhance-profile] Calling OpenAI enhancement service...', { cvId });
@@ -1216,7 +1257,8 @@ app.post('/api/enhance-profile', async (req, res) => {
     const systemPrompt = `You are an expert resume writer and career advisor specialized in tailoring resumes for specific job positions.
     Your task is to enhance and optimize a CV/resume to maximize the candidate's chances of getting an interview for a specific job role.
     Analyze the CV provided and then enhance it based on the target job title and description, focusing on ${targetPlatform === 'linkedin' ? 'LinkedIn profile optimization' : 'resume format for job applications'}.
-    **IMPORTANT**: Your response MUST include all sections from the original CV (summary, skills, work_experience, education, and any other sections present in the provided CV JSON). For sections you enhance, provide the 'enhancedContent'. For sections you do not enhance, return the 'currentContent' as the 'enhancedContent'. Do NOT omit any sections from the original CV.`;
+    **IMPORTANT**: Your response MUST include all sections from the original CV (summary, skills, work_experience, education, and any other sections present in the provided CV JSON). For sections you enhance, provide the 'enhancedContent'. For sections you do not enhance, return the 'currentContent' as the 'enhancedContent'. Do NOT omit any sections from the original CV.
+    **ADDITIONALLY**: You MUST also provide a field named 'fullEnhancedCvText' containing the complete, rewritten CV text that includes all enhancements, formatted as plain text suitable for display or direct copying.`;
     
     const userPrompt = `
     # CV/Resume Information (JSON format)
@@ -1233,7 +1275,7 @@ app.post('/api/enhance-profile', async (req, res) => {
     4. Suggest improvements for education and skills sections.
     5. Review any additional sections (e.g., projects, certifications) and enhance them if relevant to the target job.
     
-    Return a JSON object with the following structure. Ensure the response is properly formatted JSON and adheres to the IMPORTANT instruction in the system prompt regarding section inclusion:
+    Return a JSON object with the following structure. Ensure the response is properly formatted JSON:
     {
       "profileScore": {
         "current": number, // current CV score (0-100)
@@ -1290,7 +1332,8 @@ app.post('/api/enhance-profile', async (req, res) => {
         "targetPlatform": string, // the platform being optimized for
         "industryFocus": string, // the industry being targeted
         "careerLevel": string // the career level being targeted
-      }
+      },
+      "fullEnhancedCvText": string // IMPORTANT: The complete, enhanced CV text incorporating all improvements as plain text
     }`;
     
     // Call OpenAI

@@ -103,6 +103,7 @@ export interface ProfileEnhancementResult {
   actionPlan: ActionPlan;
   jobTitle?: string;
   adaptedCV?: string;
+  fullEnhancedCvText?: string;
   metadata?: {
     processedAt: string;
     targetPlatform: string;
