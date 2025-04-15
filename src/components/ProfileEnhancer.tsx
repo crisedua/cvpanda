@@ -445,10 +445,13 @@ const ProfileEnhancer: React.FC = () => {
             }
             .resume-header {
               margin-bottom: 1.5rem;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 1rem;
             }
             .resume-header h1 {
-              font-size: 1.5rem;
+              font-size: 1.7rem;
               margin: 0 0 0.5rem 0;
+              color: #1e40af;
             }
             .resume-header p {
               margin: 0 0 0.25rem 0;
@@ -480,6 +483,7 @@ const ProfileEnhancer: React.FC = () => {
               background: #f3f4f6;
               border-radius: 4px;
               font-size: 0.8rem;
+              border: 1px solid #e5e7eb;
             }
             .experience-item, .education-item {
               margin-bottom: 1rem;
@@ -487,14 +491,32 @@ const ProfileEnhancer: React.FC = () => {
             .experience-item h3, .education-item h3 {
               font-size: 1rem;
               margin: 0 0 0.25rem 0;
+              color: #374151;
             }
             .experience-item p, .education-item p {
               margin: 0 0 0.25rem 0;
               font-size: 0.9rem;
             }
+            .experience-item ul, .education-item ul {
+              margin: 0.5rem 0;
+              padding-left: 1.5rem;
+            }
             .dates {
               font-size: 0.8rem;
               color: #6b7280;
+            }
+            .personal-info {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 1rem;
+              margin-top: 0.5rem;
+              font-size: 0.9rem;
+            }
+            .personal-info span {
+              margin-right: 1rem;
+            }
+            strong {
+              color: #4b5563;
             }
             @media print {
               body {
@@ -724,34 +746,68 @@ const ProfileEnhancer: React.FC = () => {
           {/* Formatted Resume View */}
           {showFormattedResume ? (
             <div className="bg-white rounded-lg shadow-md p-6 mb-8 max-w-4xl mx-auto">
-              <div ref={resumeRef} className="resume-container">
-                <div className="resume-header">
-                  {/* Get name from CV data or use placeholder */}
-                  <h1>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.name || 'Nombre Profesional'}</h1>
-                  <p>{enhancementResult.sectionEnhancements?.find(section => 
+              <div ref={resumeRef} className="resume-container font-sans text-gray-800 leading-relaxed p-8">
+                <div className="resume-header mb-6 border-b border-gray-200 pb-4">
+                  {/* Name and Personal Info */}
+                  <h1 className="text-3xl font-bold text-indigo-800">
+                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.name || 'Nombre Profesional'}
+                  </h1>
+                  
+                  <div className="text-md text-gray-600 mt-2">
+                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title && (
+                      <p className="font-semibold mb-1">
+                        {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.job_title}
+                      </p>
+                    )}
+                    
+                    <p className="flex flex-wrap gap-2">
+                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email && (
+                        <span>
+                          <strong className="text-gray-700">Email:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email}
+                        </span>
+                      )}
+                      
+                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone && (
+                        <span>
+                          <strong className="text-gray-700">Tel:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone}
+                        </span>
+                      )}
+                      
+                      {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location && (
+                        <span>
+                          <strong className="text-gray-700">Ubicación:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location}
+                        </span>
+                      )}
+                    </p>
+                    
+                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url && (
+                      <p className="mt-1">
+                        <strong className="text-gray-700">LinkedIn:</strong> {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.linkedin_url}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Professional Profile Section */}
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Perfil Profesional</h2>
+                  <p className="text-gray-700">{enhancementResult.sectionEnhancements?.find(section => 
                     section?.section?.toLowerCase().includes('summary') || 
                     section?.section?.toLowerCase().includes('perfil') || 
                     section?.section?.toLowerCase().includes('resumen'))?.enhancedContent || 
                     enhancementResult.fullEnhancedCvText?.substring(0, 200) || 
                     'Perfil profesional optimizado'}</p>
-                  <p>
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email && 
-                      `${cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email} | `}
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone && 
-                      `${cvs.find(cv => cv.id === selectedCV)?.parsed_data?.phone} | `}
-                    {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.location || ''}
-                  </p>
                 </div>
                 
                 {/* Skills Section */}
-                <div className="resume-section">
-                  <h2>Habilidades Clave</h2>
-                  <div className="skills-container">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Habilidades Clave</h2>
+                  <div className="flex flex-wrap gap-2">
                     {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
                       keyword?.keyword ? (
                         <span
                           key={index}
-                          className="skill-tag"
+                          className="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full border border-gray-200"
                         >
                           {keyword.keyword}
                         </span>
@@ -765,9 +821,9 @@ const ProfileEnhancer: React.FC = () => {
                   section?.section?.toLowerCase().includes('experience') || 
                   section?.section?.toLowerCase().includes('experiencia')
                 )?.enhancedContent && (
-                  <div className="resume-section">
-                    <h2>Experiencia Profesional</h2>
-                    <div dangerouslySetInnerHTML={{ 
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Experiencia Profesional</h2>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
                         section?.section?.toLowerCase().includes('experience') || 
                         section?.section?.toLowerCase().includes('experiencia')
@@ -782,9 +838,9 @@ const ProfileEnhancer: React.FC = () => {
                   section?.section?.toLowerCase().includes('educación') ||
                   section?.section?.toLowerCase().includes('formación')
                 )?.enhancedContent && (
-                  <div className="resume-section">
-                    <h2>Educación</h2>
-                    <div dangerouslySetInnerHTML={{ 
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Educación</h2>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
                         section?.section?.toLowerCase().includes('education') || 
                         section?.section?.toLowerCase().includes('educación') ||
@@ -798,15 +854,35 @@ const ProfileEnhancer: React.FC = () => {
                 {enhancementResult?.sectionEnhancements?.find(section => 
                   section?.section?.toLowerCase().includes('certif')
                 )?.enhancedContent && (
-                  <div className="resume-section">
-                    <h2>Certificaciones</h2>
-                    <div dangerouslySetInnerHTML={{ 
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">Certificaciones</h2>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
                         section?.section?.toLowerCase().includes('certif')
                       )?.enhancedContent || ''
                     }} />
                   </div>
                 )}
+                
+                {/* Additional Skills or Sections */}
+                {enhancementResult?.sectionEnhancements?.filter(section => 
+                  !section?.section?.toLowerCase().includes('summary') && 
+                  !section?.section?.toLowerCase().includes('perfil') && 
+                  !section?.section?.toLowerCase().includes('resumen') && 
+                  !section?.section?.toLowerCase().includes('experience') && 
+                  !section?.section?.toLowerCase().includes('experiencia') && 
+                  !section?.section?.toLowerCase().includes('education') && 
+                  !section?.section?.toLowerCase().includes('educación') && 
+                  !section?.section?.toLowerCase().includes('formación') && 
+                  !section?.section?.toLowerCase().includes('certif')
+                ).map((section, index) => (
+                  section?.enhancedContent ? (
+                    <div key={index} className="mb-6">
+                      <h2 className="text-xl font-semibold text-indigo-700 border-b border-gray-200 pb-1 mb-3">{section.section}</h2>
+                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.enhancedContent }} />
+                    </div>
+                  ) : null
+                ))}
               </div>
             </div>
           ) : (
