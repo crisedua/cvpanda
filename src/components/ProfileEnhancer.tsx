@@ -386,8 +386,19 @@ const ProfileEnhancer: React.FC = () => {
     }
     
     try {
-      await generateEnhancementPDF(enhancementResult, targetPlatform, jobTitle);
+      // Make sure to pass all required arguments with additional safety checks
+      await generateEnhancementPDF(
+        enhancementResult,
+        targetPlatform || 'resume',
+        jobTitle || 'Position'
+      );
       console.log('PDF generated successfully');
+      
+      // Show success message
+      setSuccessMessage('PDF generado exitosamente');
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
     } catch (error) {
       console.error('Error generating PDF:', error);
       setError('Failed to generate PDF');
@@ -717,10 +728,12 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="resume-header">
                   {/* Get name from CV data or use placeholder */}
                   <h1>{cvs.find(cv => cv.id === selectedCV)?.parsed_data?.name || 'Nombre Profesional'}</h1>
-                  <p>{enhancementResult.sectionEnhancements.find(section => 
-                    section.section.toLowerCase().includes('summary') || 
-                    section.section.toLowerCase().includes('perfil') || 
-                    section.section.toLowerCase().includes('resumen'))?.enhancedContent || 'Perfil profesional optimizado'}</p>
+                  <p>{enhancementResult.sectionEnhancements?.find(section => 
+                    section?.section?.toLowerCase().includes('summary') || 
+                    section?.section?.toLowerCase().includes('perfil') || 
+                    section?.section?.toLowerCase().includes('resumen'))?.enhancedContent || 
+                    enhancementResult.fullEnhancedCvText?.substring(0, 200) || 
+                    'Perfil profesional optimizado'}</p>
                   <p>
                     {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email && 
                       `${cvs.find(cv => cv.id === selectedCV)?.parsed_data?.email} | `}
@@ -735,27 +748,29 @@ const ProfileEnhancer: React.FC = () => {
                   <h2>Habilidades Clave</h2>
                   <div className="skills-container">
                     {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
-                      <span
-                        key={index}
-                        className="skill-tag"
-                      >
-                        {keyword.keyword}
-                      </span>
+                      keyword?.keyword ? (
+                        <span
+                          key={index}
+                          className="skill-tag"
+                        >
+                          {keyword.keyword}
+                        </span>
+                      ) : null
                     ))}
                   </div>
                 </div>
                 
                 {/* Experience Section */}
                 {enhancementResult?.sectionEnhancements?.find(section => 
-                  section.section.toLowerCase().includes('experience') || 
-                  section.section.toLowerCase().includes('experiencia')
-                ) && (
+                  section?.section?.toLowerCase().includes('experience') || 
+                  section?.section?.toLowerCase().includes('experiencia')
+                )?.enhancedContent && (
                   <div className="resume-section">
                     <h2>Experiencia Profesional</h2>
                     <div dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
-                        section.section.toLowerCase().includes('experience') || 
-                        section.section.toLowerCase().includes('experiencia')
+                        section?.section?.toLowerCase().includes('experience') || 
+                        section?.section?.toLowerCase().includes('experiencia')
                       )?.enhancedContent || ''
                     }} />
                   </div>
@@ -763,17 +778,17 @@ const ProfileEnhancer: React.FC = () => {
                 
                 {/* Education Section */}
                 {enhancementResult?.sectionEnhancements?.find(section => 
-                  section.section.toLowerCase().includes('education') || 
-                  section.section.toLowerCase().includes('educación') ||
-                  section.section.toLowerCase().includes('formación')
-                ) && (
+                  section?.section?.toLowerCase().includes('education') || 
+                  section?.section?.toLowerCase().includes('educación') ||
+                  section?.section?.toLowerCase().includes('formación')
+                )?.enhancedContent && (
                   <div className="resume-section">
                     <h2>Educación</h2>
                     <div dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
-                        section.section.toLowerCase().includes('education') || 
-                        section.section.toLowerCase().includes('educación') ||
-                        section.section.toLowerCase().includes('formación')
+                        section?.section?.toLowerCase().includes('education') || 
+                        section?.section?.toLowerCase().includes('educación') ||
+                        section?.section?.toLowerCase().includes('formación')
                       )?.enhancedContent || ''
                     }} />
                   </div>
@@ -781,13 +796,13 @@ const ProfileEnhancer: React.FC = () => {
                 
                 {/* Certifications Section */}
                 {enhancementResult?.sectionEnhancements?.find(section => 
-                  section.section.toLowerCase().includes('certif')
-                ) && (
+                  section?.section?.toLowerCase().includes('certif')
+                )?.enhancedContent && (
                   <div className="resume-section">
                     <h2>Certificaciones</h2>
                     <div dangerouslySetInnerHTML={{ 
                       __html: enhancementResult.sectionEnhancements.find(section => 
-                        section.section.toLowerCase().includes('certif')
+                        section?.section?.toLowerCase().includes('certif')
                       )?.enhancedContent || ''
                     }} />
                   </div>
@@ -811,19 +826,19 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="space-y-5">
                   {/* Profile Summary */}
                   {enhancementResult?.sectionEnhancements?.find(section => 
-                    section.section.toLowerCase().includes('summary') || 
-                    section.section.toLowerCase().includes('perfil') || 
-                    section.section.toLowerCase().includes('resumen')
-                  ) && (
+                    section?.section?.toLowerCase().includes('summary') || 
+                    section?.section?.toLowerCase().includes('perfil') || 
+                    section?.section?.toLowerCase().includes('resumen')
+                  )?.enhancedContent && (
                     <div className="pb-3 border-b border-indigo-100">
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Perfil Profesional
                       </h3>
                       <p className="text-gray-800">
                         {enhancementResult.sectionEnhancements.find(section => 
-                          section.section.toLowerCase().includes('summary') || 
-                          section.section.toLowerCase().includes('perfil') || 
-                          section.section.toLowerCase().includes('resumen')
+                          section?.section?.toLowerCase().includes('summary') || 
+                          section?.section?.toLowerCase().includes('perfil') || 
+                          section?.section?.toLowerCase().includes('resumen')
                         )?.enhancedContent}
                       </p>
                     </div>
@@ -836,25 +851,27 @@ const ProfileEnhancer: React.FC = () => {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {enhancementResult?.keywordAnalysis?.map((keyword, index) => (
-                        <span 
-                          key={index}
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            keyword.relevance > 80 ? 'bg-green-100 text-green-800 border border-green-200' : 
-                            keyword.relevance > 50 ? 'bg-blue-100 text-blue-800 border border-blue-200' : 
-                            'bg-gray-100 text-gray-800 border border-gray-200'
-                          }`}
-                        >
-                          {keyword.keyword}
-                        </span>
+                        keyword?.keyword ? (
+                          <span 
+                            key={index}
+                            className={`px-3 py-1 rounded-full text-sm ${
+                              keyword.relevance > 80 ? 'bg-green-100 text-green-800 border border-green-200' : 
+                              keyword.relevance > 50 ? 'bg-blue-100 text-blue-800 border border-blue-200' : 
+                              'bg-gray-100 text-gray-800 border border-gray-200'
+                            }`}
+                          >
+                            {keyword.keyword}
+                          </span>
+                        ) : null
                       ))}
                     </div>
                   </div>
 
                   {/* Experience Section */}
                   {enhancementResult?.sectionEnhancements?.find(section => 
-                    section.section.toLowerCase().includes('experience') || 
-                    section.section.toLowerCase().includes('experiencia')
-                  ) && (
+                    section?.section?.toLowerCase().includes('experience') || 
+                    section?.section?.toLowerCase().includes('experiencia')
+                  )?.enhancedContent && (
                     <div className="pb-3 border-b border-indigo-100">
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Experiencia Profesional
@@ -862,8 +879,8 @@ const ProfileEnhancer: React.FC = () => {
                       <div className="prose prose-sm max-w-none">
                         <div dangerouslySetInnerHTML={{ 
                           __html: enhancementResult.sectionEnhancements.find(section => 
-                            section.section.toLowerCase().includes('experience') || 
-                            section.section.toLowerCase().includes('experiencia')
+                            section?.section?.toLowerCase().includes('experience') || 
+                            section?.section?.toLowerCase().includes('experiencia')
                           )?.enhancedContent || ''
                         }} />
                       </div>
@@ -872,10 +889,10 @@ const ProfileEnhancer: React.FC = () => {
 
                   {/* Education Section */}
                   {enhancementResult?.sectionEnhancements?.find(section => 
-                    section.section.toLowerCase().includes('education') || 
-                    section.section.toLowerCase().includes('educación') ||
-                    section.section.toLowerCase().includes('formación')
-                  ) && (
+                    section?.section?.toLowerCase().includes('education') || 
+                    section?.section?.toLowerCase().includes('educación') ||
+                    section?.section?.toLowerCase().includes('formación')
+                  )?.enhancedContent && (
                     <div className="pb-3 border-b border-indigo-100">
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Educación
@@ -883,9 +900,9 @@ const ProfileEnhancer: React.FC = () => {
                       <div className="prose prose-sm max-w-none">
                         <div dangerouslySetInnerHTML={{ 
                           __html: enhancementResult.sectionEnhancements.find(section => 
-                            section.section.toLowerCase().includes('education') || 
-                            section.section.toLowerCase().includes('educación') ||
-                            section.section.toLowerCase().includes('formación')
+                            section?.section?.toLowerCase().includes('education') || 
+                            section?.section?.toLowerCase().includes('educación') ||
+                            section?.section?.toLowerCase().includes('formación')
                           )?.enhancedContent || ''
                         }} />
                       </div>
@@ -894,8 +911,8 @@ const ProfileEnhancer: React.FC = () => {
                   
                   {/* Certifications Section (if exists) */}
                   {enhancementResult?.sectionEnhancements?.find(section => 
-                    section.section.toLowerCase().includes('certif') 
-                  ) && (
+                    section?.section?.toLowerCase().includes('certif') 
+                  )?.enhancedContent && (
                     <div className="pb-3 border-b border-indigo-100">
                       <h3 className="text-xl font-semibold mb-3 text-indigo-700">
                         Certificaciones
@@ -903,7 +920,7 @@ const ProfileEnhancer: React.FC = () => {
                       <div className="prose prose-sm max-w-none">
                         <div dangerouslySetInnerHTML={{ 
                           __html: enhancementResult.sectionEnhancements.find(section => 
-                            section.section.toLowerCase().includes('certif')
+                            section?.section?.toLowerCase().includes('certif')
                           )?.enhancedContent || ''
                         }} />
                       </div>

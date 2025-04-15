@@ -255,7 +255,8 @@ export async function generateWord(cv: CV, language: 'original' | 'english' = 'o
 }
 
 // Helper function to strip HTML tags
-function stripHtml(html: string): string {
+function stripHtml(html: string | undefined | null): string {
+  if (!html) return '';
   return html.replace(/<[^>]*>?/gm, '');
 }
 
@@ -298,13 +299,13 @@ export const generateEnhancementPDF = async (
     let yPosition = margin + 20;
     
     // Profile Summary Section
-    const summarySection = enhancementResult.sectionEnhancements.find(section => 
-      section.section.toLowerCase().includes('summary') || 
-      section.section.toLowerCase().includes('perfil') || 
-      section.section.toLowerCase().includes('resumen')
+    const summarySection = enhancementResult.sectionEnhancements?.find(section => 
+      section?.section?.toLowerCase().includes('summary') || 
+      section?.section?.toLowerCase().includes('perfil') || 
+      section?.section?.toLowerCase().includes('resumen')
     );
     
-    if (summarySection) {
+    if (summarySection?.enhancedContent) {
       doc.setFontSize(14);
       doc.setTextColor(30, 64, 175); // Indigo
       doc.text('Perfil Profesional', margin, yPosition);
@@ -336,6 +337,9 @@ export const generateEnhancementPDF = async (
       const skillPillHeight = 8;
       
       for (let i = 0; i < enhancementResult.keywordAnalysis.length; i++) {
+        const keyword = enhancementResult.keywordAnalysis[i];
+        if (!keyword?.keyword) continue;
+        
         const rowIndex = Math.floor(i / skillsPerRow);
         const colIndex = i % skillsPerRow;
         const xPos = margin + (colIndex * (skillPillWidth + 5));
@@ -348,8 +352,7 @@ export const generateEnhancementPDF = async (
         
         // Add skill text
         doc.setTextColor(30, 64, 175); // Indigo
-        const skill = enhancementResult.keywordAnalysis[i].keyword;
-        doc.text(skill, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+        doc.text(keyword.keyword, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
       }
       
       // Update y position after skills
@@ -358,12 +361,12 @@ export const generateEnhancementPDF = async (
     }
     
     // Experience Section
-    const experienceSection = enhancementResult.sectionEnhancements.find(section => 
-      section.section.toLowerCase().includes('experience') || 
-      section.section.toLowerCase().includes('experiencia')
+    const experienceSection = enhancementResult.sectionEnhancements?.find(section => 
+      section?.section?.toLowerCase().includes('experience') || 
+      section?.section?.toLowerCase().includes('experiencia')
     );
     
-    if (experienceSection) {
+    if (experienceSection?.enhancedContent) {
       // Add new page if there's not enough space
       if (yPosition > pageHeight - 100) {
         doc.addPage();
@@ -386,13 +389,13 @@ export const generateEnhancementPDF = async (
     }
     
     // Education Section
-    const educationSection = enhancementResult.sectionEnhancements.find(section => 
-      section.section.toLowerCase().includes('education') || 
-      section.section.toLowerCase().includes('educación') ||
-      section.section.toLowerCase().includes('formación')
+    const educationSection = enhancementResult.sectionEnhancements?.find(section => 
+      section?.section?.toLowerCase().includes('education') || 
+      section?.section?.toLowerCase().includes('educación') ||
+      section?.section?.toLowerCase().includes('formación')
     );
     
-    if (educationSection) {
+    if (educationSection?.enhancedContent) {
       // Add new page if there's not enough space
       if (yPosition > pageHeight - 60) {
         doc.addPage();
@@ -415,11 +418,11 @@ export const generateEnhancementPDF = async (
     }
     
     // Certifications Section
-    const certificationsSection = enhancementResult.sectionEnhancements.find(section => 
-      section.section.toLowerCase().includes('certif')
+    const certificationsSection = enhancementResult.sectionEnhancements?.find(section => 
+      section?.section?.toLowerCase().includes('certif')
     );
     
-    if (certificationsSection) {
+    if (certificationsSection?.enhancedContent) {
       // Add new page if there's not enough space
       if (yPosition > pageHeight - 60) {
         doc.addPage();
@@ -439,6 +442,25 @@ export const generateEnhancementPDF = async (
       const splitCertifications = doc.splitTextToSize(certificationsText, contentWidth);
       doc.text(splitCertifications, margin, yPosition);
       yPosition += splitCertifications.length * 5 + 8;
+    }
+    
+    // Use fullEnhancedCvText as a fallback if no sections were found
+    if (!summarySection?.enhancedContent && 
+        !experienceSection?.enhancedContent && 
+        !educationSection?.enhancedContent && 
+        enhancementResult.fullEnhancedCvText) {
+      
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Currículum Vitae Completo', margin, yPosition);
+      yPosition += 6;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      const fullText = stripHtml(enhancementResult.fullEnhancedCvText);
+      const splitFullText = doc.splitTextToSize(fullText, contentWidth);
+      doc.text(splitFullText, margin, yPosition);
     }
     
     // Add footer with date
