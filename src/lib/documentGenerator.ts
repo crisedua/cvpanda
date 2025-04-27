@@ -261,14 +261,33 @@ function stripHtml(html: string | undefined | null): string {
     return '';
   }
   
-  // Ensure we're working with a string
-  const htmlString = String(html);
+  // Handle non-string inputs
+  if (typeof html !== 'string') {
+    try {
+      // Try to convert to string if possible
+      if (typeof html === 'object') {
+        return JSON.stringify(html);
+      }
+      return String(html);
+    } catch (error) {
+      console.error('Error converting HTML to string:', error);
+      return '';
+    }
+  }
   
   try {
-    return htmlString.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ');
+    // Replace HTML tags with nothing, and common entities with their characters
+    return html
+      .replace(/<[^>]*>?/gm, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
   } catch (error) {
     console.error('Error stripping HTML:', error);
-    return htmlString; // Return the original if replace fails
+    return html; // Return the original if replace fails
   }
 }
 
@@ -307,7 +326,8 @@ export const generateEnhancementPDF = async (
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139); // Slate gray
-    doc.text(`Para: ${jobTitle || 'Profesional'}`, pageWidth / 2, margin + 8, { align: 'center' });
+    const safeJobTitle = typeof jobTitle === 'string' && jobTitle.trim() ? jobTitle : 'Profesional';
+    doc.text(`Para: ${safeJobTitle}`, pageWidth / 2, margin + 8, { align: 'center' });
     
     // Add horizontal line
     doc.setDrawColor(200, 200, 200);
@@ -315,180 +335,226 @@ export const generateEnhancementPDF = async (
     
     let yPosition = margin + 20;
     
-    // Personal Information Section - New Addition
-    if (enhancementResult.personalInfo || enhancementResult.cvData) {
-      // Get personal info either from enhancementResult.personalInfo or enhancementResult.cvData
-      const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
-      
-      if (Object.keys(personalInfo).length > 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(30, 64, 175); // Indigo
-        doc.text('Información Personal', margin, yPosition);
-        yPosition += 6;
-        
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        
-        // Add name if available
-        if (personalInfo.name) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Nombre: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.name, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        // Add contact information if available
-        if (personalInfo.email) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Email: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.email, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        if (personalInfo.phone) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Teléfono: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.phone, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        if (personalInfo.location) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Ubicación: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.location, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        // Add links if available
-        if (personalInfo.linkedin_url) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`LinkedIn: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.linkedin_url, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        if (personalInfo.github_url) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`GitHub: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.github_url, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        if (personalInfo.website_url) {
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Sitio Web: `, margin, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text(personalInfo.website_url, margin + 15, yPosition);
-          yPosition += 5;
-        }
-        
-        yPosition += 5; // Add some spacing after personal info
-      }
-    }
+    // Personal Information Section - Improved with additional safeguards
+    const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
     
-    // Profile Summary Section
-    const summarySection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase?.()?.includes('summary') || 
-      section?.section?.toLowerCase?.()?.includes('perfil') || 
-      section?.section?.toLowerCase?.()?.includes('resumen')
-    );
-    
-    if (summarySection?.enhancedContent) {
+    if (personalInfo && typeof personalInfo === 'object' && Object.keys(personalInfo).length > 0) {
       doc.setFontSize(14);
       doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Perfil Profesional', margin, yPosition);
+      doc.text('Información Personal', margin, yPosition);
       yPosition += 6;
       
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       
-      // Handle text wrapping
-      try {
-        const summaryText = stripHtml(summarySection.enhancedContent);
-        const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
-        doc.text(splitSummary, margin, yPosition);
-        yPosition += splitSummary.length * 5 + 8;
-      } catch (error) {
-        console.error('Error processing summary section:', error);
-        // Skip this section if there's an error
+      // Add name if available, with explicit string conversion
+      if (personalInfo.name) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Nombre: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.name), margin + 15, yPosition);
+        yPosition += 5;
       }
+      
+      // Add contact information if available, with explicit string conversion
+      if (personalInfo.email) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Email: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.email), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      if (personalInfo.phone) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Teléfono: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.phone), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      if (personalInfo.location) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Ubicación: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.location), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      // Add links if available, with explicit string conversion
+      if (personalInfo.linkedin_url) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`LinkedIn: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.linkedin_url), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      if (personalInfo.github_url) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`GitHub: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.github_url), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      if (personalInfo.website_url) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Sitio Web: `, margin, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(personalInfo.website_url), margin + 15, yPosition);
+        yPosition += 5;
+      }
+      
+      yPosition += 5; // Add some spacing after personal info
     }
     
-    // Skills Section
-    doc.setFontSize(14);
-    doc.setTextColor(30, 64, 175); // Indigo
-    doc.text('Habilidades Clave', margin, yPosition);
-    yPosition += 6;
+    // Profile Summary Section with improved error handling
+    try {
+      const summarySection = enhancementResult.sectionEnhancements?.find(section => 
+        section && section.section && typeof section.section === 'string' && (
+          section.section.toLowerCase().includes('summary') || 
+          section.section.toLowerCase().includes('perfil') || 
+          section.section.toLowerCase().includes('resumen')
+        )
+      );
+      
+      // First try enhanced content, then fall back to full text if available
+      const hasSummaryContent = summarySection?.enhancedContent || enhancementResult.fullEnhancedCvText;
+      
+      if (hasSummaryContent) {
+        doc.setFontSize(14);
+        doc.setTextColor(30, 64, 175); // Indigo
+        doc.text('Perfil Profesional', margin, yPosition);
+        yPosition += 6;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        
+        // Try the summary section first, fall back to a portion of the full text
+        let summaryText = '';
+        if (summarySection?.enhancedContent) {
+          summaryText = stripHtml(summarySection.enhancedContent);
+        } else if (enhancementResult.fullEnhancedCvText) {
+          // Use just the beginning of the full text as a summary
+          summaryText = stripHtml(enhancementResult.fullEnhancedCvText).substring(0, 500) + '...';
+        }
+        
+        if (summaryText) {
+          const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
+          doc.text(splitSummary, margin, yPosition);
+          yPosition += splitSummary.length * 5 + 8;
+        }
+      }
+    } catch (error) {
+      console.error('Error processing summary section:', error);
+      // Continue with other sections
+    }
     
-    if (enhancementResult.keywordAnalysis && Array.isArray(enhancementResult.keywordAnalysis) && enhancementResult.keywordAnalysis.length > 0) {
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
+    // Skills Section with improved error handling
+    try {
+      doc.setFontSize(14);
+      doc.setTextColor(30, 64, 175); // Indigo
+      doc.text('Habilidades Clave', margin, yPosition);
+      yPosition += 6;
       
-      // Create skill pill boxes
-      const skillsPerRow = 3;
-      const skillPillWidth = contentWidth / skillsPerRow - 5;
-      const skillPillHeight = 8;
+      // Safe helper function to determine if an array actually has items
+      const hasValidItems = (arr: any): boolean => {
+        return Array.isArray(arr) && arr.length > 0 && arr.some(item => item != null);
+      };
       
-      for (let i = 0; i < enhancementResult.keywordAnalysis.length; i++) {
-        const keyword = enhancementResult.keywordAnalysis[i];
-        if (!keyword?.keyword) continue;
+      // Try to use keyword analysis first, fall back to CV skills
+      if (hasValidItems(enhancementResult.keywordAnalysis)) {
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
         
-        const rowIndex = Math.floor(i / skillsPerRow);
-        const colIndex = i % skillsPerRow;
-        const xPos = margin + (colIndex * (skillPillWidth + 5));
-        const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
+        // Create skill pill boxes
+        const skillsPerRow = 3;
+        const skillPillWidth = contentWidth / skillsPerRow - 5;
+        const skillPillHeight = 8;
         
-        // Draw skill pill
-        doc.setFillColor(240, 249, 255); // Light blue background
-        doc.setDrawColor(210, 227, 252); // Blue border
-        doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+        let validKeywords = 0;
+        for (let i = 0; i < enhancementResult.keywordAnalysis.length; i++) {
+          const keyword = enhancementResult.keywordAnalysis[i];
+          // Skip invalid keywords
+          if (!keyword || (typeof keyword === 'object' && !keyword.keyword)) continue;
+          
+          // Extract the keyword text safely
+          let keywordText = '';
+          if (typeof keyword === 'string') {
+            keywordText = keyword;
+          } else if (typeof keyword === 'object' && keyword.keyword) {
+            keywordText = String(keyword.keyword);
+          } else {
+            continue; // Skip this item if we can't determine the keyword
+          }
+          
+          const rowIndex = Math.floor(validKeywords / skillsPerRow);
+          const colIndex = validKeywords % skillsPerRow;
+          const xPos = margin + (colIndex * (skillPillWidth + 5));
+          const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
+          
+          // Draw skill pill
+          doc.setFillColor(240, 249, 255); // Light blue background
+          doc.setDrawColor(210, 227, 252); // Blue border
+          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+          
+          // Add skill text
+          doc.setTextColor(30, 64, 175); // Indigo
+          doc.text(keywordText, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+          
+          validKeywords++;
+        }
         
-        // Add skill text
-        doc.setTextColor(30, 64, 175); // Indigo
-        doc.text(String(keyword.keyword), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+        // Update y position after skills
+        const skillRows = Math.ceil(validKeywords / skillsPerRow);
+        yPosition += (skillRows * (skillPillHeight + 4)) + 8;
+      } else if (hasValidItems(enhancementResult.cvData?.skills)) {
+        // Fallback to original CV skills if no keyword analysis is available
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        
+        // Create skill pill boxes
+        const skillsPerRow = 3;
+        const skillPillWidth = contentWidth / skillsPerRow - 5;
+        const skillPillHeight = 8;
+        
+        let validSkills = 0;
+        for (let i = 0; i < enhancementResult.cvData.skills.length; i++) {
+          const skill = enhancementResult.cvData.skills[i];
+          // Skip empty skills
+          if (!skill) continue;
+          
+          const rowIndex = Math.floor(validSkills / skillsPerRow);
+          const colIndex = validSkills % skillsPerRow;
+          const xPos = margin + (colIndex * (skillPillWidth + 5));
+          const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
+          
+          // Draw skill pill
+          doc.setFillColor(240, 249, 255); // Light blue background
+          doc.setDrawColor(210, 227, 252); // Blue border
+          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+          
+          // Add skill text
+          doc.setTextColor(30, 64, 175); // Indigo
+          doc.text(String(skill), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+          
+          validSkills++;
+        }
+        
+        // Update y position after skills
+        const skillRows = Math.ceil(validSkills / skillsPerRow);
+        yPosition += (skillRows * (skillPillHeight + 4)) + 8;
+      } else {
+        // If no skills are available, add a message
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text("No se encontraron habilidades específicas", margin, yPosition);
+        yPosition += 10;
       }
-      
-      // Update y position after skills
-      const skillRows = Math.ceil(enhancementResult.keywordAnalysis.length / skillsPerRow);
-      yPosition += (skillRows * (skillPillHeight + 4)) + 8;
-    } else if (enhancementResult.cvData?.skills && Array.isArray(enhancementResult.cvData.skills) && enhancementResult.cvData.skills.length > 0) {
-      // Fallback to original CV skills if no keyword analysis is available
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      // Create skill pill boxes
-      const skillsPerRow = 3;
-      const skillPillWidth = contentWidth / skillsPerRow - 5;
-      const skillPillHeight = 8;
-      
-      for (let i = 0; i < enhancementResult.cvData.skills.length; i++) {
-        const skill = enhancementResult.cvData.skills[i];
-        if (!skill) continue;
-        
-        const rowIndex = Math.floor(i / skillsPerRow);
-        const colIndex = i % skillsPerRow;
-        const xPos = margin + (colIndex * (skillPillWidth + 5));
-        const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
-        
-        // Draw skill pill
-        doc.setFillColor(240, 249, 255); // Light blue background
-        doc.setDrawColor(210, 227, 252); // Blue border
-        doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
-        
-        // Add skill text
-        doc.setTextColor(30, 64, 175); // Indigo
-        doc.text(String(skill), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
-      }
-      
-      // Update y position after skills
-      const skillRows = Math.ceil(enhancementResult.cvData.skills.length / skillsPerRow);
-      yPosition += (skillRows * (skillPillHeight + 4)) + 8;
+    } catch (error) {
+      console.error('Error processing skills section:', error);
+      // Continue with other sections
     }
     
     // Experience Section
