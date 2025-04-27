@@ -19,7 +19,7 @@ import {
   Printer,
   Share2
 } from 'lucide-react';
-import { CV, ProfileEnhancementResult } from '../types';
+import { CV, ProfileEnhancementResult, ProfileSectionEnhancement } from '../types';
 import { generateEnhancementPDF } from '../lib/documentGenerator';
 
 const ProfileEnhancer: React.FC = () => {

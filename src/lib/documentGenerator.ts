@@ -335,6 +335,11 @@ export const generateEnhancementPDF = async (
     
     let yPosition = margin + 20;
     
+    // Define section variables at the top level to ensure they're available throughout the function
+    let summarySection = null;
+    let experienceSection = null;
+    let educationSection = null;
+    
     // Personal Information Section - Improved with additional safeguards
     const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
     
@@ -411,7 +416,7 @@ export const generateEnhancementPDF = async (
     
     // Profile Summary Section with improved error handling
     try {
-      const summarySection = enhancementResult.sectionEnhancements?.find(section => 
+      summarySection = enhancementResult.sectionEnhancements?.find(section => 
         section && section.section && typeof section.section === 'string' && (
           section.section.toLowerCase().includes('summary') || 
           section.section.toLowerCase().includes('perfil') || 
@@ -558,7 +563,7 @@ export const generateEnhancementPDF = async (
     }
     
     // Experience Section
-    const experienceSection = enhancementResult.sectionEnhancements?.find(section => 
+    experienceSection = enhancementResult.sectionEnhancements?.find(section => 
       section?.section?.toLowerCase?.()?.includes('experience') || 
       section?.section?.toLowerCase?.()?.includes('experiencia')
     );
@@ -743,7 +748,7 @@ export const generateEnhancementPDF = async (
     }
     
     // Education Section
-    const educationSection = enhancementResult.sectionEnhancements?.find(section => 
+    educationSection = enhancementResult.sectionEnhancements?.find(section => 
       section?.section?.toLowerCase?.()?.includes('education') || 
       section?.section?.toLowerCase?.()?.includes('educación') ||
       section?.section?.toLowerCase?.()?.includes('formación')
