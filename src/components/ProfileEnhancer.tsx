@@ -699,21 +699,6 @@ const ProfileEnhancer: React.FC = () => {
               />
             </div>
             
-            {/* Progress Bar - Show when enhancing */}
-            {enhancing && (
-              <div className="md:col-span-2 mb-4">
-                <div className="bg-indigo-50 p-4 rounded-md">
-                  <h3 className="text-center text-lg font-medium text-indigo-700 mb-2">
-                    {t('profileEnhancer.enhancing')}
-                  </h3>
-                  <ProgressBar 
-                    progress={progress} 
-                    label={t('profileEnhancer.enhancingProgress')} 
-                  />
-                </div>
-              </div>
-            )}
-            
             <div className="md:col-span-2 mt-4">
               <button
                 className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed"
@@ -726,13 +711,25 @@ const ProfileEnhancer: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {t('profileEnhancer.enhancing')}
+                    {t('profileEnhancer.enhancing', 'Enhancing Profile...')}
                   </span>
                 ) : (
                   t('profileEnhancer.enhance')
                 )}
               </button>
             </div>
+            
+            {/* Progress Bar */}
+            {enhancing && (
+              <div className="md:col-span-2 mt-4">
+                <div className="bg-indigo-50 p-4 rounded-md">
+                  <ProgressBar 
+                    progress={progress} 
+                    label={t('profileEnhancer.enhancingProgress', 'Analyzing your profile and providing enhancement recommendations...')} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -1033,27 +1030,6 @@ const ProfileEnhancer: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tips section */}
-              <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <h3 className="text-lg font-semibold text-blue-800 mb-3">
-                  Consejos para aumentar tus posibilidades
-                </h3>
-                <ul className="space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <span className="text-blue-600 mr-2">•</span>
-                    <span>Adapta tu CV para cada solicitud de empleo, destacando las habilidades y experiencias más relevantes para el puesto específico.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-600 mr-2">•</span>
-                    <span>Utiliza palabras clave específicas del sector y de la descripción del puesto para superar los filtros ATS.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-600 mr-2">•</span>
-                    <span>Cuantifica tus logros cuando sea posible (por ej., "Aumenté las ventas en un 25%") para demostrar el impacto de tu trabajo.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
           )}
         </div>
       )}
