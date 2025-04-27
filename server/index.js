@@ -687,14 +687,14 @@ app.post('/api/parse-text', async (req, res) => {
       console.log(`[parse-text] Sending ${cvText.length} chars to gpt-4o-mini with enhanced prompt...`);
 
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Updated to use gpt-4o-mini instead of gpt-3.5-turbo
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: cvText } 
         ],
-        temperature: 0.1, // Lower temperature for more deterministic JSON output
-        max_tokens: 4000, // Increased token limit for more detailed extraction
-        response_format: { type: "json_object" }, // Explicitly request JSON output
+        temperature: 0.1,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
       });
 
       const gptResultContent = gptResponse.choices[0]?.message?.content;
@@ -1339,7 +1339,7 @@ app.post('/api/enhance-profile', async (req, res) => {
     // Call OpenAI
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview', // or any available model that fits your needs
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -1467,7 +1467,7 @@ app.post('/api/analyze-skill-gaps', async (req, res) => {
     
     // Call OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview', // or any available model that fits your needs
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
