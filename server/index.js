@@ -34,30 +34,6 @@ if (process.env.APIFY_API_TOKEN) {
 
 const app = express();
 
-// Add custom header middleware *before* CORS
-/* // <-- Start comment
-app.use((req, res, next) => {
-  // Add a unique header to verify deployment
-  res.setHeader('X-CVPANDA-BACKEND-VERSION', 'cors-check-v2'); 
-  
-  // Log the origin for debugging CORS issues
-  console.log('⚠️ Request Origin:', req.headers.origin);
-  
-  // Pre-flight response headers for CORS
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  if (req.method === 'OPTIONS') {
-    console.log('⚠️ Handling preflight request');
-    return res.status(200).end();
-  }
-  
-  next();
-});
-*/ // <-- End comment
-
 // More permissive CORS configuration that overrides any defaults
 // This will now handle pre-flight requests correctly.
 app.use(cors({
@@ -81,18 +57,28 @@ app.use(cors({
     // Check if origin is allowed
     if(allowedOrigins.indexOf(origin) === -1){
       console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
-      // Don't block the request, but log it
-      return callback(null, true);
+      // Instead of allowing all origins, return a proper error
+      // return callback(null, true);
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
     
     console.log(`✅ Origin ${origin} allowed by CORS`);
-    return callback(null, true);
+    return callback(null, origin); // Return the specific origin instead of true
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
-  exposedHeaders: ['X-CVPANDA-BACKEND-VERSION']
+  exposedHeaders: ['X-CVPANDA-BACKEND-VERSION'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Add a simple middleware to log all CORS issues
+app.use((req, res, next) => {
+  console.log(`[CORS DEBUG] Request from origin: ${req.headers.origin || 'unknown'} to ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 
 // *** ADD SIMPLE PING TEST ROUTE ***
