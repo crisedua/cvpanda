@@ -568,6 +568,39 @@ const ProfileEnhancer: React.FC = () => {
     };
   };
 
+  const prepareEnhancementResult = (result: ProfileEnhancementResult) => {
+    // Create a deep copy with safe defaults
+    const safeResult = {
+      ...result,
+      profileScore: result.profileScore || { current: 0, potential: 0, keyFactors: [] },
+      keywordAnalysis: Array.isArray(result.keywordAnalysis) ? result.keywordAnalysis : [],
+      sectionEnhancements: Array.isArray(result.sectionEnhancements) ? result.sectionEnhancements.map(section => {
+        if (!section) return null;
+        
+        // If the enhancedContent is an object (like [object Object]), convert it to a formatted string
+        let content = section.enhancedContent;
+        if (typeof content === 'object' && content !== null) {
+          try {
+            content = JSON.stringify(content, null, 2);
+          } catch (e) {
+            content = String(content);
+          }
+        }
+        
+        return {
+          ...section,
+          enhancedContent: content
+        };
+      }).filter(Boolean) : [],
+      industryTrends: result.industryTrends || [],
+      atsOptimization: result.atsOptimization || { currentScore: 0, recommendations: [], keywordsToAdd: [] },
+      competitiveAdvantage: result.competitiveAdvantage || { uniqueSellingPoints: [], differentiationStrategy: '', emergingOpportunities: [] },
+      actionPlan: result.actionPlan || { immediate: [], shortTerm: [], longTerm: [] }
+    };
+    
+    return safeResult as ProfileEnhancementResult; // Type assertion to match the expected type
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4">
@@ -830,7 +863,8 @@ const ProfileEnhancer: React.FC = () => {
                 <div className="resume-section mb-6">
                   <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Professional Profile</h2>
                   <div className="prose" dangerouslySetInnerHTML={{ 
-                    __html: enhancementResult?.sectionEnhancements?.find(s => s.section === 'summary')?.enhancedContent ||
+                    __html: enhancementResult?.sectionEnhancements?.find(s => 
+                      s?.section === 'summary')?.enhancedContent ||
                             cvs.find(cv => cv.id === selectedCV)?.parsed_data?.summary ||
                             (enhancementResult?.fullEnhancedCvText ? enhancementResult.fullEnhancedCvText.substring(0, 200) + '...' : '')
                   }}></div>
@@ -863,21 +897,30 @@ const ProfileEnhancer: React.FC = () => {
               {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.length > 0 && (
                 <div className="resume-section mb-6">
                   <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Work Experience</h2>
-                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.map((exp, index) => (
-                    <div key={index} className="mb-4">
-                      <div className="flex justify-between">
-                        <h3 className="font-semibold text-gray-800">{exp.title || exp.company}</h3>
-                        <span className="text-gray-600 text-sm">{exp.dates}</span>
+                  
+                  {/* First check if we have an enhanced work experience section */}
+                  {enhancementResult?.sectionEnhancements?.find(s => 
+                    s?.section === 'work_experience')?.enhancedContent ? (
+                    <div className="prose" dangerouslySetInnerHTML={{ 
+                      __html: enhancementResult?.sectionEnhancements?.find(s => 
+                        s?.section === 'work_experience')?.enhancedContent || ''
+                    }}></div>
+                  ) : (
+                    /* Otherwise, render the original work experience items */
+                    cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.map((exp, index) => (
+                      <div key={index} className="mb-4">
+                        <div className="flex justify-between">
+                          <h3 className="font-semibold text-gray-800">{exp.title || exp.company}</h3>
+                          <span className="text-gray-600 text-sm">{exp.dates}</span>
+                        </div>
+                        <p className="text-gray-700 font-medium">{exp.company}</p>
+                        {exp.location && <p className="text-gray-600 text-sm">{exp.location}</p>}
+                        {exp.description && <div className="mt-2 prose" dangerouslySetInnerHTML={{ 
+                          __html: exp.description
+                        }}></div>}
                       </div>
-                      <p className="text-gray-700 font-medium">{exp.company}</p>
-                      {exp.location && <p className="text-gray-600 text-sm">{exp.location}</p>}
-                      <div className="mt-2 prose" dangerouslySetInnerHTML={{ 
-                        __html: enhancementResult?.sectionEnhancements?.find(s => 
-                          s.section === 'work_experience')?.enhancedContent || 
-                          exp.description || ''
-                      }}></div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
 
@@ -887,13 +930,19 @@ const ProfileEnhancer: React.FC = () => {
                   <h2 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Education</h2>
                   {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.education?.map((edu, index) => (
                     <div key={index} className="mb-3">
-                      <div className="flex justify-between">
-                        <h3 className="font-semibold text-gray-800">{edu.degree}</h3>
-                        <span className="text-gray-600 text-sm">{edu.dates}</span>
+                      <div className="flex justify-between items-baseline">
+                        <h3 className="text-md font-bold">{edu.degree || edu.field_of_study}</h3>
+                        <span className="text-sm text-gray-600">{edu.institution}</span>
                       </div>
-                      <p className="text-gray-700">{edu.institution}</p>
-                      {edu.location && <p className="text-gray-600 text-sm">{edu.location}</p>}
-                      {edu.description && <div className="mt-1 prose" dangerouslySetInnerHTML={{ __html: edu.description }}></div>}
+                      <div className="text-xs text-gray-500 mb-1">{edu.dates}</div>
+                      {/* Check if location exists before rendering */}
+                      {(edu as any).location && <div className="text-xs text-gray-500">{(edu as any).location}</div>}
+                      {/* Check if description exists before rendering */}
+                      {(edu as any).description && (
+                        <div className="text-sm mt-1">
+                          <div dangerouslySetInnerHTML={{ __html: (edu as any).description }}></div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -972,26 +1021,39 @@ const ProfileEnhancer: React.FC = () => {
                     Experiencia
                   </h2>
 
-                  {/* Work Experience Items - One per job */}
-                  {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.map((exp, index) => (
-                    <div key={index} className="mb-3">
-                      <div className="flex justify-between items-baseline">
-                        <h3 className="text-md font-bold">{exp.title || exp.company}</h3>
-                        <span className="text-sm text-gray-600">{exp.company}</span>
+                  {/* Work Experience - Check for enhanced content first */}
+                  {enhancementResult?.sectionEnhancements?.find(s => 
+                    s?.section === 'work_experience')?.enhancedContent ? (
+                    <div className="text-sm" dangerouslySetInnerHTML={{
+                      __html: enhancementResult?.sectionEnhancements?.find(s => 
+                        s?.section === 'work_experience')?.enhancedContent || ''
+                    }}></div>
+                  ) : (
+                    /* Otherwise, render the original work experience items */
+                    cvs.find(cv => cv.id === selectedCV)?.parsed_data?.work_experience?.map((exp, index) => (
+                      <div key={index} className="mb-3">
+                        <div className="flex justify-between items-baseline">
+                          <h3 className="text-md font-bold">{exp.title || exp.company}</h3>
+                          <span className="text-sm text-gray-600">{exp.company}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mb-1">{exp.dates}</div>
+                        
+                        <div className="text-sm">
+                          <strong>Key Achievements:</strong>
+                          {exp.description ? (
+                            <div className="mt-1 ml-2" dangerouslySetInnerHTML={{
+                              __html: exp.description
+                            }}></div>
+                          ) : (
+                            <ul className="mt-1 ml-2">
+                              <li>Enhanced descriptions focusing on leadership, budget and team management.</li>
+                              <li>Details on successful project outcomes with metrics.</li>
+                            </ul>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mb-1">{exp.dates}</div>
-                      
-                      <div className="text-sm">
-                        <strong>Key Achievements:</strong>
-                        <div className="mt-1 ml-2" dangerouslySetInnerHTML={{
-                          __html: exp.description || 
-                            enhancementResult?.sectionEnhancements?.find(s => 
-                            s.section === 'work_experience')?.enhancedContent || 
-                            '<ul><li>Enhanced descriptions focusing on leadership, budget and team management.</li><li>Details on successful project outcomes with metrics.</li></ul>'
-                        }}></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Education Section */}
@@ -1004,7 +1066,7 @@ const ProfileEnhancer: React.FC = () => {
                   {cvs.find(cv => cv.id === selectedCV)?.parsed_data?.education?.map((edu, index) => (
                     <div key={index} className="mb-2">
                       <div className="flex items-baseline">
-                        <h3 className="text-md font-bold mr-2">{edu.degree}</h3>
+                        <h3 className="text-md font-bold mr-2">{edu.degree || edu.field_of_study}</h3>
                         <span className="text-sm text-gray-600">{edu.institution}</span>
                       </div>
                       <div className="text-xs text-gray-500">{edu.dates}</div>
