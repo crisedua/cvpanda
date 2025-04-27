@@ -433,19 +433,19 @@ export const generateEnhancementPDF = async (
               doc.setFontSize(11);
               doc.setTextColor(40, 40, 40);
               doc.setFont('helvetica', 'bold');
-              doc.text(title, margin, yPosition);
+              doc.text(title || 'Position', margin, yPosition);
               
               // Add company alongside the title, aligned right
               doc.setFont('helvetica', 'normal');
-              const titleWidth = doc.getTextWidth(title);
-              doc.text(company, margin + titleWidth + 2, yPosition);
+              const titleWidth = doc.getTextWidth(title || 'Position');
+              doc.text(company || 'Company', margin + titleWidth + 2, yPosition);
               
               yPosition += 5;
               
               // Add dates
               doc.setFontSize(9);
               doc.setTextColor(100, 100, 100);
-              doc.text(dates, margin, yPosition);
+              doc.text(dates || '', margin, yPosition);
               yPosition += 7;
               
               // If we've covered multiple positions, add a small divider
@@ -485,7 +485,21 @@ export const generateEnhancementPDF = async (
         try {
           doc.setFontSize(10);
           doc.setTextColor(60, 60, 60);
-          const experienceText = stripHtml(experienceSection.enhancedContent);
+          // Ensure we're working with a string
+          let experienceText;
+          if (typeof experienceSection.enhancedContent === 'object') {
+            // If it's an object, try to extract meaningful properties
+            const obj = experienceSection.enhancedContent as any;
+            const parts = [];
+            if (obj.title) parts.push(`${obj.title}`);
+            if (obj.company) parts.push(`at ${obj.company}`);
+            if (obj.dates) parts.push(`(${obj.dates})`);
+            if (obj.description) parts.push(`\n${obj.description}`);
+            experienceText = parts.join(' ') || JSON.stringify(obj, null, 2);
+          } else {
+            experienceText = stripHtml(experienceSection.enhancedContent);
+          }
+          
           const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
           doc.text(splitExperience, margin, yPosition);
           yPosition += splitExperience.length * 5 + 8;
@@ -540,13 +554,13 @@ export const generateEnhancementPDF = async (
               doc.setFontSize(11);
               doc.setTextColor(40, 40, 40);
               doc.setFont('helvetica', 'bold');
-              doc.text(degree.trim(), margin, yPosition);
+              doc.text(degree.trim() || 'Degree', margin, yPosition);
               yPosition += 5;
               
               // Add institution
               doc.setFont('helvetica', 'normal');
               doc.setFontSize(10);
-              doc.text(institution.trim(), margin, yPosition);
+              doc.text(institution.trim() || 'Institution', margin, yPosition);
               
               // Add year on the same line, aligned right
               if (year) {
@@ -578,7 +592,21 @@ export const generateEnhancementPDF = async (
         // Fall back to using the raw enhanced content
         doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
-        const educationText = stripHtml(educationSection.enhancedContent);
+        
+        // Ensure we're working with a string
+        let educationText;
+        if (typeof educationSection.enhancedContent === 'object') {
+          // If it's an object, try to extract meaningful properties
+          const obj = educationSection.enhancedContent as any;
+          const parts = [];
+          if (obj.degree) parts.push(`${obj.degree}`);
+          if (obj.institution) parts.push(`at ${obj.institution}`);
+          if (obj.dates) parts.push(`(${obj.dates})`);
+          educationText = parts.join(' ') || JSON.stringify(obj, null, 2);
+        } else {
+          educationText = stripHtml(educationSection.enhancedContent);
+        }
+        
         const splitEducation = doc.splitTextToSize(educationText, contentWidth);
         doc.text(splitEducation, margin, yPosition);
         yPosition += splitEducation.length * 5 + 8;
