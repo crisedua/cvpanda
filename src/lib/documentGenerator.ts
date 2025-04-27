@@ -256,7 +256,10 @@ export async function generateWord(cv: CV, language: 'original' | 'english' = 'o
 
 // Helper function to strip HTML tags
 function stripHtml(html: string | undefined | null): string {
-  if (!html) return '';
+  // If input is undefined or null, return an empty string
+  if (html === undefined || html === null) {
+    return '';
+  }
   
   // Ensure we're working with a string
   const htmlString = String(html);

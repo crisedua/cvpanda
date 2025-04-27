@@ -1030,6 +1030,27 @@ const ProfileEnhancer: React.FC = () => {
                 </div>
               </div>
 
+              {/* Tips section */}
+              <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <h3 className="text-lg font-semibold text-blue-800 mb-3">
+                  Consejos para aumentar tus posibilidades
+                </h3>
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    <span>Adapta tu CV para cada solicitud de empleo, destacando las habilidades y experiencias más relevantes para el puesto específico.</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    <span>Utiliza palabras clave específicas del sector y de la descripción del puesto para superar los filtros ATS.</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    <span>Cuantifica tus logros cuando sea posible (por ej., "Aumenté las ventas en un 25%") para demostrar el impacto de tu trabajo.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           )}
         </div>
       )}
