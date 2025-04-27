@@ -257,7 +257,16 @@ export async function generateWord(cv: CV, language: 'original' | 'english' = 'o
 // Helper function to strip HTML tags
 function stripHtml(html: string | undefined | null): string {
   if (!html) return '';
-  return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ');
+  
+  // Ensure we're working with a string
+  const htmlString = String(html);
+  
+  try {
+    return htmlString.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ');
+  } catch (error) {
+    console.error('Error stripping HTML:', error);
+    return htmlString; // Return the original if replace fails
+  }
 }
 
 // Improved PDF generation for enhanced profile
@@ -267,6 +276,11 @@ export const generateEnhancementPDF = async (
   jobTitle: string
 ): Promise<void> => {
   try {
+    // Validate input parameters
+    if (!enhancementResult) {
+      throw new Error('Enhancement result is required');
+    }
+    
     // Create new PDF document
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -290,7 +304,7 @@ export const generateEnhancementPDF = async (
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139); // Slate gray
-    doc.text(`Para: ${jobTitle}`, pageWidth / 2, margin + 8, { align: 'center' });
+    doc.text(`Para: ${jobTitle || 'Profesional'}`, pageWidth / 2, margin + 8, { align: 'center' });
     
     // Add horizontal line
     doc.setDrawColor(200, 200, 200);
@@ -300,9 +314,9 @@ export const generateEnhancementPDF = async (
     
     // Profile Summary Section
     const summarySection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase().includes('summary') || 
-      section?.section?.toLowerCase().includes('perfil') || 
-      section?.section?.toLowerCase().includes('resumen')
+      section?.section?.toLowerCase?.()?.includes('summary') || 
+      section?.section?.toLowerCase?.()?.includes('perfil') || 
+      section?.section?.toLowerCase?.()?.includes('resumen')
     );
     
     if (summarySection?.enhancedContent) {
@@ -315,10 +329,15 @@ export const generateEnhancementPDF = async (
       doc.setTextColor(60, 60, 60);
       
       // Handle text wrapping
-      const summaryText = stripHtml(summarySection.enhancedContent);
-      const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
-      doc.text(splitSummary, margin, yPosition);
-      yPosition += splitSummary.length * 5 + 8;
+      try {
+        const summaryText = stripHtml(summarySection.enhancedContent);
+        const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
+        doc.text(splitSummary, margin, yPosition);
+        yPosition += splitSummary.length * 5 + 8;
+      } catch (error) {
+        console.error('Error processing summary section:', error);
+        // Skip this section if there's an error
+      }
     }
     
     // Skills Section
@@ -327,7 +346,7 @@ export const generateEnhancementPDF = async (
     doc.text('Habilidades Clave', margin, yPosition);
     yPosition += 6;
     
-    if (enhancementResult.keywordAnalysis && enhancementResult.keywordAnalysis.length > 0) {
+    if (enhancementResult.keywordAnalysis && Array.isArray(enhancementResult.keywordAnalysis) && enhancementResult.keywordAnalysis.length > 0) {
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       
@@ -352,7 +371,7 @@ export const generateEnhancementPDF = async (
         
         // Add skill text
         doc.setTextColor(30, 64, 175); // Indigo
-        doc.text(keyword.keyword, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
+        doc.text(String(keyword.keyword), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
       }
       
       // Update y position after skills
@@ -362,8 +381,8 @@ export const generateEnhancementPDF = async (
     
     // Experience Section
     const experienceSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase().includes('experience') || 
-      section?.section?.toLowerCase().includes('experiencia')
+      section?.section?.toLowerCase?.()?.includes('experience') || 
+      section?.section?.toLowerCase?.()?.includes('experiencia')
     );
     
     if (experienceSection?.enhancedContent) {
@@ -379,14 +398,17 @@ export const generateEnhancementPDF = async (
       yPosition += 6;
       
       // Try to extract individual job positions if they exist in the fullEnhancedCvText
-      // This part assumes that the experience section might have been enhanced with details
-      if (enhancementResult.fullEnhancedCvText && enhancementResult.fullEnhancedCvText.includes("CIO") || 
-          enhancementResult.fullEnhancedCvText?.includes("Executive") ||
-          enhancementResult.fullEnhancedCvText?.includes("Manager")) {
-        
+      const hasFullText = enhancementResult.fullEnhancedCvText && typeof enhancementResult.fullEnhancedCvText === 'string';
+      const containsJobKeywords = hasFullText && (
+        enhancementResult.fullEnhancedCvText.includes("CIO") || 
+        enhancementResult.fullEnhancedCvText.includes("Executive") ||
+        enhancementResult.fullEnhancedCvText.includes("Manager")
+      );
+      
+      if (hasFullText && containsJobKeywords) {
         try {
           // First, create an array of possible job positions by looking for patterns
-          const experienceText = enhancementResult.fullEnhancedCvText || '';
+          const experienceText = String(enhancementResult.fullEnhancedCvText || '');
           
           // Match patterns like "Position at Company (Date - Date)"
           const jobMatches = experienceText.match(/([A-Za-z\s,]+)(at|,)\s([A-Za-z\s,\.]+)(\(|\s)([0-9]{4}\s*[-–]\s*(?:[0-9]{4}|Present|\d{4}))/gi);
@@ -444,27 +466,38 @@ export const generateEnhancementPDF = async (
           console.error("Error parsing experience details:", err);
           doc.setFontSize(10);
           doc.setTextColor(60, 60, 60);
+          
+          try {
+            const experienceText = stripHtml(experienceSection.enhancedContent);
+            const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+            doc.text(splitExperience, margin, yPosition);
+            yPosition += splitExperience.length * 5 + 8;
+          } catch (textError) {
+            console.error("Error processing experience text:", textError);
+            // Skip this section if there's an error
+          }
+        }
+      } else {
+        // Fall back to using the raw enhanced content if no detailed positions found
+        try {
+          doc.setFontSize(10);
+          doc.setTextColor(60, 60, 60);
           const experienceText = stripHtml(experienceSection.enhancedContent);
           const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
           doc.text(splitExperience, margin, yPosition);
           yPosition += splitExperience.length * 5 + 8;
+        } catch (error) {
+          console.error("Error processing experience text:", error);
+          // Skip this section if there's an error
         }
-      } else {
-        // Fall back to using the raw enhanced content if no detailed positions found
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        const experienceText = stripHtml(experienceSection.enhancedContent);
-        const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
-        doc.text(splitExperience, margin, yPosition);
-        yPosition += splitExperience.length * 5 + 8;
       }
     }
     
     // Education Section
     const educationSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase().includes('education') || 
-      section?.section?.toLowerCase().includes('educación') ||
-      section?.section?.toLowerCase().includes('formación')
+      section?.section?.toLowerCase?.()?.includes('education') || 
+      section?.section?.toLowerCase?.()?.includes('educación') ||
+      section?.section?.toLowerCase?.()?.includes('formación')
     );
     
     if (educationSection?.enhancedContent) {
@@ -551,7 +584,7 @@ export const generateEnhancementPDF = async (
     
     // Certifications Section
     const certificationsSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase().includes('certif')
+      section?.section?.toLowerCase?.()?.includes('certif')
     );
     
     if (certificationsSection?.enhancedContent) {
