@@ -597,106 +597,88 @@ export const generateEnhancementPDF = async (
       doc.text('Experiencia Profesional', margin, yPosition + 6);
       yPosition += 10;
       
-      // First try to use enhanced content if available
-      if (experienceSection?.enhancedContent) {
+      // Add experience items
+      doc.setTextColor(...colors.dark);
+      // Ensures we have something to render
+      if (enhancementResult.enhancedWorkExperience || enhancementResult.cvData?.work_experience) {
         try {
-          // Try to parse experience text to extract structured data
-          const experienceText = stripHtml(experienceSection.enhancedContent);
-          
-          // Check if the content appears to be JSON
-          if (experienceText.includes('"title":') && experienceText.includes('"company":')) {
-            try {
-              // Try to parse it as JSON
-              const expEntries = JSON.parse(experienceText.replace(/'/g, '"'));
-              if (Array.isArray(expEntries)) {
-                expEntries.forEach((exp, index) => {
-                  // Format each job with professional styling
-                  const title = exp.title || 'Position';
-                  const company = exp.company || 'Company';
-                  const dates = exp.dates || '';
-                  const description = exp.description || '';
-                  
-                  // Add job title and company
-                  doc.setFontSize(11);
-                  doc.setTextColor(...colors.dark);
-                  doc.setFont('helvetica', 'bold');
-                  doc.text(title, margin, yPosition);
-                  
-                  // Company and dates on the same line
+          if (enhancementResult.enhancedWorkExperience) {
+            const expData = JSON.parse(enhancementResult.enhancedWorkExperience);
+            if (Array.isArray(expData) && expData.length > 0) {
+              expData.forEach((exp, index) => {
+                // Job title (position)
+                doc.setFontSize(11);
+                doc.setTextColor(...colors.dark);
+                doc.setFont('helvetica', 'bold');
+                doc.text(exp.title || exp.position || 'Position', margin, yPosition);
+                
+                // Company on the same line as title
+                doc.setFont('helvetica', 'normal');
+                const titleWidth = doc.getTextWidth(exp.title || exp.position || 'Position');
+                if (exp.company) {
                   doc.setFontSize(10);
+                  doc.text(`at ${exp.company}`, margin + titleWidth + 5, yPosition);
+                }
+                
+                // Add dates
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.accent);
+                if (exp.dates || exp.duration) {
+                  doc.text(exp.dates || exp.duration, pageWidth - margin, yPosition, { align: 'right' });
+                }
+                yPosition += 5;
+                
+                // Add job role if available
+                if (exp.role || exp.jobRole) {
+                  doc.setTextColor(...colors.secondary);
+                  doc.setFont('helvetica', 'italic');
+                  doc.text(`Rol: ${exp.role || exp.jobRole}`, margin, yPosition);
                   doc.setFont('helvetica', 'normal');
-                  doc.text(company, margin, yPosition + 5);
-                  doc.setTextColor(...colors.accent);
-                  doc.text(dates, pageWidth - margin, yPosition + 5, { align: 'right' });
-                  
-                  // Description with bullet points
-                  if (description) {
-                    yPosition += 8;
-                    doc.setFontSize(9);
-                    doc.setTextColor(...colors.dark);
-                    
-                    // Check if description has bullets or is a paragraph
-                    if (description.includes('•') || description.includes('-')) {
-                      // Already has bullets
-                      const bullets = description.split(/•|\-/).filter(b => b.trim());
-                      bullets.forEach(bullet => {
-                        const bulletText = bullet.trim();
-                        if (bulletText) {
-                          const splitBullet = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 5);
-                          doc.text(splitBullet, margin + 5, yPosition);
-                          yPosition += splitBullet.length * 4;
-                        }
-                      });
-                    } else {
-                      // Format as paragraph
-                      const splitDesc = doc.splitTextToSize(description, contentWidth);
-                      doc.text(splitDesc, margin, yPosition);
-                      yPosition += splitDesc.length * 4;
-                    }
-                  }
-                  
-                  // Add spacing between entries
-                  yPosition += 8;
-                  
-                  // Add a subtle divider between experiences (except for the last one)
-                  if (index < expEntries.length - 1) {
-                    doc.setDrawColor(...colors.mediumGray);
-                    doc.line(margin + 10, yPosition - 4, margin + 50, yPosition - 4);
-                    yPosition += 4;
-                  }
-                });
-              } else {
-                // Fall back to displaying as text
-                const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+                  yPosition += 5;
+                }
+                
+                // Add description
                 doc.setFontSize(9);
                 doc.setTextColor(...colors.dark);
-                doc.text(splitExperience, margin, yPosition);
-                yPosition += splitExperience.length * 4 + 8;
-              }
-            } catch (e) {
-              // If parsing fails, display as plain text
-              const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
-              doc.setFontSize(9);
-              doc.setTextColor(...colors.dark);
-              doc.text(splitExperience, margin, yPosition);
-              yPosition += splitExperience.length * 4 + 8;
+                // Handle different description formats
+                let description = '';
+                
+                if (exp.description && typeof exp.description === 'string') {
+                  description = exp.description;
+                } else if (exp.achievements && Array.isArray(exp.achievements)) {
+                  description = exp.achievements.join("\n• ");
+                  if (description) description = "• " + description;
+                } else if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
+                  description = exp.responsibilities.join("\n• ");
+                  if (description) description = "• " + description;
+                }
+                
+                if (description) {
+                  const splitDescription = doc.splitTextToSize(description, contentWidth);
+                  doc.text(splitDescription, margin, yPosition);
+                  yPosition += splitDescription.length * 4;
+                }
+                
+                // Add spacing between jobs
+                if (index < expData.length - 1) {
+                  yPosition += 5;
+                  doc.setDrawColor(...colors.mediumGray);
+                  doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
+                  yPosition += 5;
+                } else {
+                  yPosition += 8;
+                }
+              });
+            } else {
+              fallbackToOriginalWorkExperience();
             }
           } else {
-            // Treat as plain text
-            const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
-            doc.setFontSize(9);
-            doc.setTextColor(...colors.dark);
-            doc.text(splitExperience, margin, yPosition);
-            yPosition += splitExperience.length * 4 + 8;
+            fallbackToOriginalWorkExperience();
           }
-        } catch (err) {
-          console.error("Error parsing experience:", err);
-          // Fall back to original CV data if enhanced content fails
+        } catch (error) {
+          console.error('Error parsing enhancedWorkExperience:', error);
           fallbackToOriginalWorkExperience();
         }
-      } else {
-        // If no enhanced content, use original CV data
-        fallbackToOriginalWorkExperience();
       }
       
       // Helper function to use original work experience data
@@ -724,6 +706,16 @@ export const generateEnhancementPDF = async (
               doc.text(exp.dates, pageWidth - margin, yPosition, { align: 'right' });
             }
             yPosition += 5;
+            
+            // Add job role if available
+            const role = (exp as any).role || (exp as any).jobRole;
+            if (role) {
+              doc.setTextColor(...colors.secondary);
+              doc.setFont('helvetica', 'italic');
+              doc.text(`Rol: ${role}`, margin, yPosition);
+              doc.setFont('helvetica', 'normal');
+              yPosition += 5;
+            }
             
             // Add description if available
             if (exp.description) {
@@ -1001,12 +993,111 @@ export const generateEnhancementPDF = async (
                                 'education', 'educación', 'formación', 'certif', 'language', 'idioma', 
                                 'project', 'proyecto', 'reference', 'referencia'];
       
+      // Look specifically for a job roles section
+      const jobRolesSection = enhancementResult.sectionEnhancements.find(section => 
+        section?.section?.toLowerCase?.()?.includes('job role') || 
+        section?.section?.toLowerCase?.()?.includes('cargo') ||
+        section?.section?.toLowerCase?.()?.includes('puesto') ||
+        section?.section?.toLowerCase?.()?.includes('roles')
+      );
+      
+      // Add job roles section if found
+      if (jobRolesSection?.enhancedContent) {
+        // Add new page if there's not enough space
+        if (yPosition > pageHeight - 60) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        
+        // Section heading with accent bar
+        doc.setFillColor(...colors.primary);
+        doc.rect(margin, yPosition, 8, 1, 'F');
+        
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Roles Profesionales', margin, yPosition + 6);
+        yPosition += 10;
+        
+        doc.setFontSize(9);
+        doc.setTextColor(...colors.dark);
+        doc.setFont('helvetica', 'normal');
+        
+        // Handle HTML content - strip tags and create paragraphs
+        const jobRolesText = stripHtml(jobRolesSection.enhancedContent);
+        
+        // Try to parse as JSON if it looks structured
+        if (jobRolesText.includes('"role":') || jobRolesText.includes('"title":')) {
+          try {
+            const roles = JSON.parse(jobRolesText.replace(/'/g, '"'));
+            if (Array.isArray(roles)) {
+              roles.forEach((role, index) => {
+                // Format each role
+                const roleTitle = role.role || role.title || '';
+                const roleDesc = role.description || '';
+                
+                if (roleTitle) {
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(`• ${roleTitle}`, margin, yPosition);
+                  yPosition += 5;
+                }
+                
+                if (roleDesc) {
+                  doc.setFont('helvetica', 'normal');
+                  const splitDesc = doc.splitTextToSize(roleDesc, contentWidth - 5);
+                  doc.text(splitDesc, margin + 5, yPosition);
+                  yPosition += splitDesc.length * 4;
+                }
+                
+                // Add spacing between roles
+                if (index < roles.length - 1) {
+                  yPosition += 3;
+                }
+              });
+            } else {
+              // Fall back to plain text
+              const splitRoles = doc.splitTextToSize(jobRolesText, contentWidth);
+              doc.text(splitRoles, margin, yPosition);
+              yPosition += splitRoles.length * 4 + 8;
+            }
+          } catch (e) {
+            // Fall back to plain text if parsing fails
+            const splitRoles = doc.splitTextToSize(jobRolesText, contentWidth);
+            doc.text(splitRoles, margin, yPosition);
+            yPosition += splitRoles.length * 4 + 8;
+          }
+        } else {
+          // Format as plain text with bullet points if possible
+          if (jobRolesText.includes('•') || jobRolesText.includes('-')) {
+            const bullets = jobRolesText.split(/•|\-/).filter(b => b.trim());
+            bullets.forEach(bullet => {
+              const bulletText = bullet.trim();
+              if (bulletText) {
+                const splitBullet = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 5);
+                doc.text(splitBullet, margin, yPosition);
+                yPosition += splitBullet.length * 4;
+              }
+            });
+          } else {
+            const splitRoles = doc.splitTextToSize(jobRolesText, contentWidth);
+            doc.text(splitRoles, margin, yPosition);
+            yPosition += splitRoles.length * 4 + 8;
+          }
+        }
+        
+        yPosition += 8; // Extra space after job roles section
+      }
+      
       enhancementResult.sectionEnhancements.forEach(section => {
         if (!section?.section) return;
         
         // Skip sections we've already processed
         const sectionLower = section.section.toLowerCase();
-        if (processedSections.some(ps => sectionLower.includes(ps))) return;
+        if (processedSections.some(ps => sectionLower.includes(ps)) || 
+           sectionLower.includes('job role') || 
+           sectionLower.includes('cargo') || 
+           sectionLower.includes('puesto') ||
+           sectionLower.includes('roles')) return;
         
         // Add new page if there's not enough space
         if (yPosition > pageHeight - 60) {
