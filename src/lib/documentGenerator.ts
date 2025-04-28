@@ -310,111 +310,108 @@ export const generateEnhancementPDF = async (
       format: 'a4'
     });
     
-    // Add fonts
+    // Add fonts - use default fonts for compatibility
     doc.setFont('helvetica', 'normal');
     
     // Set up page margins and dimensions
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 15; // Reduced margin for more content space
     const contentWidth = pageWidth - (margin * 2);
     
-    // Add title and subheader
-    doc.setFontSize(20);
-    doc.setTextColor(59, 130, 246); // Blue
-    doc.text('Currículum Optimizado', pageWidth / 2, margin, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.setTextColor(100, 116, 139); // Slate gray
-    const safeJobTitle = typeof jobTitle === 'string' && jobTitle.trim() ? jobTitle : 'Profesional';
-    doc.text(`Para: ${safeJobTitle}`, pageWidth / 2, margin + 8, { align: 'center' });
-    
-    // Add horizontal line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, margin + 12, pageWidth - margin, margin + 12);
-    
-    let yPosition = margin + 20;
+    // Define professional color scheme
+    const colors = {
+      primary: [41, 65, 148], // Dark blue
+      secondary: [59, 130, 246], // Medium blue
+      accent: [100, 116, 139], // Slate
+      dark: [40, 40, 40], // Near black
+      light: [250, 250, 250], // Near white
+      lightGray: [240, 240, 240], // Light gray for backgrounds
+      mediumGray: [180, 180, 180] // Medium gray for dividers
+    };
     
     // Define section variables at the top level to ensure they're available throughout the function
     let summarySection = null;
     let experienceSection = null;
     let educationSection = null;
     
-    // Personal Information Section - Improved with additional safeguards
+    // Add professional header
+    doc.setFillColor(...colors.primary);
+    doc.rect(0, 0, pageWidth, 10, 'F');
+    
+    // Add title with nicer typography
+    doc.setFontSize(16);
+    doc.setTextColor(...colors.dark);
+    doc.setFont('helvetica', 'bold');
+    doc.text(targetPlatform === 'linkedin' ? 'Perfil Profesional Optimizado' : 'Currículum Vitae Profesional', margin, margin + 5);
+    
+    // Add subtitle with job target
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.accent);
+    doc.setFont('helvetica', 'normal');
+    const safeJobTitle = typeof jobTitle === 'string' && jobTitle.trim() ? jobTitle : 'Profesional';
+    doc.text(`Optimizado para: ${safeJobTitle}`, margin, margin + 12);
+    
+    // Add horizontal divider
+    doc.setDrawColor(...colors.mediumGray);
+    doc.setLineWidth(0.5);
+    doc.line(margin, margin + 15, pageWidth - margin, margin + 15);
+    
+    let yPosition = margin + 22;
+    
+    // Personal Information Section with improved layout
     const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
     
     if (personalInfo && typeof personalInfo === 'object' && Object.keys(personalInfo).length > 0) {
-      doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Información Personal', margin, yPosition);
-      yPosition += 6;
+      // Create a clean personal info header
+      doc.setFillColor(...colors.lightGray);
+      doc.roundedRect(margin, yPosition - 5, contentWidth, 25 + (personalInfo.name ? 5 : 0) + 
+        (personalInfo.email ? 5 : 0) + (personalInfo.phone ? 5 : 0) + 
+        (personalInfo.location ? 5 : 0), 3, 3, 'F');
       
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      // Add name if available, with explicit string conversion
+      // Name with larger font
       if (personalInfo.name) {
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.primary);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Nombre: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.name), margin + 15, yPosition);
-        yPosition += 5;
+        doc.text(String(personalInfo.name), margin + 5, yPosition + 5);
+        yPosition += 8;
       }
       
-      // Add contact information if available, with explicit string conversion
-      if (personalInfo.email) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Email: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.email), margin + 15, yPosition);
-        yPosition += 5;
+      // Contact details in a more compact format
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.dark);
+      doc.setFont('helvetica', 'normal');
+      
+      let contactLine = '';
+      if (personalInfo.email) contactLine += `Email: ${personalInfo.email}`;
+      if (personalInfo.phone) contactLine += contactLine ? '  |  ' : '';
+      if (personalInfo.phone) contactLine += `Tel: ${personalInfo.phone}`;
+      if (personalInfo.location) contactLine += contactLine ? '  |  ' : '';
+      if (personalInfo.location) contactLine += `${personalInfo.location}`;
+      
+      if (contactLine) {
+        doc.text(contactLine, margin + 5, yPosition + 2);
+        yPosition += 6;
       }
       
-      if (personalInfo.phone) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Teléfono: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.phone), margin + 15, yPosition);
-        yPosition += 5;
+      // Professional links
+      let linksLine = '';
+      if (personalInfo.linkedin_url) linksLine += `LinkedIn: ${personalInfo.linkedin_url}`;
+      if (personalInfo.github_url) linksLine += linksLine ? '  |  ' : '';
+      if (personalInfo.github_url) linksLine += `GitHub: ${personalInfo.github_url}`;
+      if (personalInfo.website_url) linksLine += linksLine ? '  |  ' : '';
+      if (personalInfo.website_url) linksLine += `Web: ${personalInfo.website_url}`;
+      
+      if (linksLine) {
+        doc.text(linksLine, margin + 5, yPosition + 2);
+        yPosition += 6;
       }
       
-      if (personalInfo.location) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Ubicación: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.location), margin + 15, yPosition);
-        yPosition += 5;
-      }
-      
-      // Add links if available, with explicit string conversion
-      if (personalInfo.linkedin_url) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`LinkedIn: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.linkedin_url), margin + 15, yPosition);
-        yPosition += 5;
-      }
-      
-      if (personalInfo.github_url) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`GitHub: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.github_url), margin + 15, yPosition);
-        yPosition += 5;
-      }
-      
-      if (personalInfo.website_url) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Sitio Web: `, margin, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(personalInfo.website_url), margin + 15, yPosition);
-        yPosition += 5;
-      }
-      
-      yPosition += 5; // Add some spacing after personal info
+      yPosition += 10; // Space after personal info section
     }
     
-    // Profile Summary Section with improved error handling
+    // Profile Summary Section with improved styling
     try {
       summarySection = enhancementResult.sectionEnhancements?.find(section => 
         section && section.section && typeof section.section === 'string' && (
@@ -428,13 +425,19 @@ export const generateEnhancementPDF = async (
       const hasSummaryContent = summarySection?.enhancedContent || enhancementResult.fullEnhancedCvText;
       
       if (hasSummaryContent) {
+        // Section heading with accent bar
+        doc.setFillColor(...colors.primary);
+        doc.rect(margin, yPosition, 8, 1, 'F');
+        
         doc.setFontSize(14);
-        doc.setTextColor(30, 64, 175); // Indigo
-        doc.text('Perfil Profesional', margin, yPosition);
-        yPosition += 6;
+        doc.setTextColor(...colors.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Perfil Profesional', margin, yPosition + 6);
+        yPosition += 10;
         
         doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(...colors.dark);
+        doc.setFont('helvetica', 'normal');
         
         // Try the summary section first, fall back to a portion of the full text
         let summaryText = '';
@@ -456,12 +459,17 @@ export const generateEnhancementPDF = async (
       // Continue with other sections
     }
     
-    // Skills Section with improved error handling
+    // Skills Section with improved visual presentation
     try {
+      // Section heading with accent bar
+      doc.setFillColor(...colors.primary);
+      doc.rect(margin, yPosition, 8, 1, 'F');
+      
       doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Habilidades Clave', margin, yPosition);
-      yPosition += 6;
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Habilidades Clave', margin, yPosition + 6);
+      yPosition += 10;
       
       // Safe helper function to determine if an array actually has items
       const hasValidItems = (arr: any): boolean => {
@@ -470,12 +478,11 @@ export const generateEnhancementPDF = async (
       
       // Try to use keyword analysis first, fall back to CV skills
       if (hasValidItems(enhancementResult.keywordAnalysis)) {
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
+        doc.setFontSize(9);
         
-        // Create skill pill boxes
+        // Create skill pill boxes in a more attractive grid
         const skillsPerRow = 3;
-        const skillPillWidth = contentWidth / skillsPerRow - 5;
+        const skillPillWidth = contentWidth / skillsPerRow - 6;
         const skillPillHeight = 8;
         
         let validKeywords = 0;
@@ -496,16 +503,16 @@ export const generateEnhancementPDF = async (
           
           const rowIndex = Math.floor(validKeywords / skillsPerRow);
           const colIndex = validKeywords % skillsPerRow;
-          const xPos = margin + (colIndex * (skillPillWidth + 5));
+          const xPos = margin + (colIndex * (skillPillWidth + 6));
           const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
           
-          // Draw skill pill
+          // Draw skill pill with gradient effect
           doc.setFillColor(240, 249, 255); // Light blue background
-          doc.setDrawColor(210, 227, 252); // Blue border
-          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+          doc.setDrawColor(...colors.secondary);
+          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 3, 3, 'FD');
           
           // Add skill text
-          doc.setTextColor(30, 64, 175); // Indigo
+          doc.setTextColor(...colors.primary);
           doc.text(keywordText, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
           
           validKeywords++;
@@ -516,12 +523,12 @@ export const generateEnhancementPDF = async (
         yPosition += (skillRows * (skillPillHeight + 4)) + 8;
       } else if (hasValidItems(enhancementResult.cvData?.skills)) {
         // Fallback to original CV skills if no keyword analysis is available
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
+        // Similar styling as above
+        doc.setFontSize(9);
         
         // Create skill pill boxes
         const skillsPerRow = 3;
-        const skillPillWidth = contentWidth / skillsPerRow - 5;
+        const skillPillWidth = contentWidth / skillsPerRow - 6;
         const skillPillHeight = 8;
         
         let validSkills = 0;
@@ -532,16 +539,16 @@ export const generateEnhancementPDF = async (
           
           const rowIndex = Math.floor(validSkills / skillsPerRow);
           const colIndex = validSkills % skillsPerRow;
-          const xPos = margin + (colIndex * (skillPillWidth + 5));
+          const xPos = margin + (colIndex * (skillPillWidth + 6));
           const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
           
           // Draw skill pill
           doc.setFillColor(240, 249, 255); // Light blue background
-          doc.setDrawColor(210, 227, 252); // Blue border
-          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 2, 2, 'FD');
+          doc.setDrawColor(...colors.secondary);
+          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 3, 3, 'FD');
           
           // Add skill text
-          doc.setTextColor(30, 64, 175); // Indigo
+          doc.setTextColor(...colors.primary);
           doc.text(String(skill), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
           
           validSkills++;
@@ -553,7 +560,7 @@ export const generateEnhancementPDF = async (
       } else {
         // If no skills are available, add a message
         doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(...colors.accent);
         doc.text("No se encontraron habilidades específicas", margin, yPosition);
         yPosition += 10;
       }
@@ -562,7 +569,7 @@ export const generateEnhancementPDF = async (
       // Continue with other sections
     }
     
-    // Experience Section
+    // Experience Section with improved formatting
     experienceSection = enhancementResult.sectionEnhancements?.find(section => 
       section?.section?.toLowerCase?.()?.includes('experience') || 
       section?.section?.toLowerCase?.()?.includes('experiencia')
@@ -580,122 +587,112 @@ export const generateEnhancementPDF = async (
         yPosition = margin;
       }
       
+      // Section heading with accent bar
+      doc.setFillColor(...colors.primary);
+      doc.rect(margin, yPosition, 8, 1, 'F');
+      
       doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Experiencia Profesional', margin, yPosition);
-      yPosition += 6;
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Experiencia Profesional', margin, yPosition + 6);
+      yPosition += 10;
       
       // First try to use enhanced content if available
       if (experienceSection?.enhancedContent) {
-        // Try to extract individual job positions if they exist in the fullEnhancedCvText
-        const hasFullText = enhancementResult.fullEnhancedCvText && typeof enhancementResult.fullEnhancedCvText === 'string';
-        const containsJobKeywords = hasFullText && (
-          enhancementResult.fullEnhancedCvText.includes("CIO") || 
-          enhancementResult.fullEnhancedCvText.includes("Executive") ||
-          enhancementResult.fullEnhancedCvText.includes("Manager")
-        );
-        
-        if (hasFullText && containsJobKeywords) {
-          try {
-            // First, create an array of possible job positions by looking for patterns
-            const experienceText = String(enhancementResult.fullEnhancedCvText || '');
-            
-            // Match patterns like "Position at Company (Date - Date)"
-            const jobMatches = experienceText.match(/([A-Za-z\s,]+)(at|,)\s([A-Za-z\s,\.]+)(\(|\s)([0-9]{4}\s*[-–]\s*(?:[0-9]{4}|Present|\d{4}))/gi);
-            
-            if (jobMatches && jobMatches.length > 0) {
-              for (let i = 0; i < jobMatches.length; i++) {
-                const jobText = jobMatches[i];
-                
-                // Extract job components
-                const titleMatch = jobText.match(/^([^,]+)(,|\sat)/i);
-                const companyMatch = jobText.match(/(at|,)\s([^(]+)/i);
-                const dateMatch = jobText.match(/([0-9]{4}\s*[-–]\s*(?:[0-9]{4}|Present|\d{4}))/i);
-                
-                const title = titleMatch ? titleMatch[1].trim() : '';
-                const company = companyMatch ? companyMatch[2].trim() : '';
-                const dates = dateMatch ? dateMatch[1].trim() : '';
-                
-                // Add job position details
-                doc.setFontSize(11);
-                doc.setTextColor(40, 40, 40);
-                doc.setFont('helvetica', 'bold');
-                doc.text(title || 'Position', margin, yPosition);
-                
-                // Add company alongside the title, aligned right
-                doc.setFont('helvetica', 'normal');
-                const titleWidth = doc.getTextWidth(title || 'Position');
-                doc.text(company || 'Company', margin + titleWidth + 2, yPosition);
-                
-                yPosition += 5;
-                
-                // Add dates
-                doc.setFontSize(9);
-                doc.setTextColor(100, 100, 100);
-                doc.text(dates || '', margin, yPosition);
-                yPosition += 7;
-                
-                // If we've covered multiple positions, add a small divider
-                if (i < jobMatches.length - 1) {
-                  doc.setDrawColor(220, 220, 220);
-                  doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
-                  yPosition += 5;
-                }
-              }
-            } else {
-              // If no job positions found, fall back to using the raw enhanced content
-              doc.setFontSize(10);
-              doc.setTextColor(60, 60, 60);
-              const experienceText = stripHtml(experienceSection.enhancedContent);
-              const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
-              doc.text(splitExperience, margin, yPosition);
-              yPosition += splitExperience.length * 5 + 8;
-            }
-          } catch (err) {
-            // On any error parsing the experience, fall back to raw content
-            console.error("Error parsing experience details:", err);
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
-            
+        try {
+          // Try to parse experience text to extract structured data
+          const experienceText = stripHtml(experienceSection.enhancedContent);
+          
+          // Check if the content appears to be JSON
+          if (experienceText.includes('"title":') && experienceText.includes('"company":')) {
             try {
-              const experienceText = stripHtml(experienceSection.enhancedContent);
+              // Try to parse it as JSON
+              const expEntries = JSON.parse(experienceText.replace(/'/g, '"'));
+              if (Array.isArray(expEntries)) {
+                expEntries.forEach((exp, index) => {
+                  // Format each job with professional styling
+                  const title = exp.title || 'Position';
+                  const company = exp.company || 'Company';
+                  const dates = exp.dates || '';
+                  const description = exp.description || '';
+                  
+                  // Add job title and company
+                  doc.setFontSize(11);
+                  doc.setTextColor(...colors.dark);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(title, margin, yPosition);
+                  
+                  // Company and dates on the same line
+                  doc.setFontSize(10);
+                  doc.setFont('helvetica', 'normal');
+                  doc.text(company, margin, yPosition + 5);
+                  doc.setTextColor(...colors.accent);
+                  doc.text(dates, pageWidth - margin, yPosition + 5, { align: 'right' });
+                  
+                  // Description with bullet points
+                  if (description) {
+                    yPosition += 8;
+                    doc.setFontSize(9);
+                    doc.setTextColor(...colors.dark);
+                    
+                    // Check if description has bullets or is a paragraph
+                    if (description.includes('•') || description.includes('-')) {
+                      // Already has bullets
+                      const bullets = description.split(/•|\-/).filter(b => b.trim());
+                      bullets.forEach(bullet => {
+                        const bulletText = bullet.trim();
+                        if (bulletText) {
+                          const splitBullet = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 5);
+                          doc.text(splitBullet, margin + 5, yPosition);
+                          yPosition += splitBullet.length * 4;
+                        }
+                      });
+                    } else {
+                      // Format as paragraph
+                      const splitDesc = doc.splitTextToSize(description, contentWidth);
+                      doc.text(splitDesc, margin, yPosition);
+                      yPosition += splitDesc.length * 4;
+                    }
+                  }
+                  
+                  // Add spacing between entries
+                  yPosition += 8;
+                  
+                  // Add a subtle divider between experiences (except for the last one)
+                  if (index < expEntries.length - 1) {
+                    doc.setDrawColor(...colors.mediumGray);
+                    doc.line(margin + 10, yPosition - 4, margin + 50, yPosition - 4);
+                    yPosition += 4;
+                  }
+                });
+              } else {
+                // Fall back to displaying as text
+                const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.dark);
+                doc.text(splitExperience, margin, yPosition);
+                yPosition += splitExperience.length * 4 + 8;
+              }
+            } catch (e) {
+              // If parsing fails, display as plain text
               const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+              doc.setFontSize(9);
+              doc.setTextColor(...colors.dark);
               doc.text(splitExperience, margin, yPosition);
-              yPosition += splitExperience.length * 5 + 8;
-            } catch (textError) {
-              console.error("Error processing experience text:", textError);
-              // Fall back to original CV data if enhanced content fails
-              fallbackToOriginalWorkExperience();
+              yPosition += splitExperience.length * 4 + 8;
             }
-          }
-        } else {
-          // Fall back to using the raw enhanced content if no detailed positions found
-          try {
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
-            // Ensure we're working with a string
-            let experienceText;
-            if (typeof experienceSection.enhancedContent === 'object') {
-              // If it's an object, try to extract meaningful properties
-              const obj = experienceSection.enhancedContent as any;
-              const parts = [];
-              if (obj.title) parts.push(`${obj.title}`);
-              if (obj.company) parts.push(`at ${obj.company}`);
-              if (obj.dates) parts.push(`(${obj.dates})`);
-              if (obj.description) parts.push(`\n${obj.description}`);
-              experienceText = parts.join(' ') || JSON.stringify(obj, null, 2);
-            } else {
-              experienceText = stripHtml(experienceSection.enhancedContent);
-            }
-            
+          } else {
+            // Treat as plain text
             const splitExperience = doc.splitTextToSize(experienceText, contentWidth);
+            doc.setFontSize(9);
+            doc.setTextColor(...colors.dark);
             doc.text(splitExperience, margin, yPosition);
-            yPosition += splitExperience.length * 5 + 8;
-          } catch (error) {
-            console.error("Error processing experience text:", error);
-            // Fall back to original CV data if enhanced content fails
-            fallbackToOriginalWorkExperience();
+            yPosition += splitExperience.length * 4 + 8;
           }
+        } catch (err) {
+          console.error("Error parsing experience:", err);
+          // Fall back to original CV data if enhanced content fails
+          fallbackToOriginalWorkExperience();
         }
       } else {
         // If no enhanced content, use original CV data
@@ -708,37 +705,41 @@ export const generateEnhancementPDF = async (
           enhancementResult.cvData.work_experience.forEach((exp, index) => {
             // Add job position details
             doc.setFontSize(11);
-            doc.setTextColor(40, 40, 40);
+            doc.setTextColor(...colors.dark);
             doc.setFont('helvetica', 'bold');
             doc.text(exp.title || 'Position', margin, yPosition);
             
-            // Add company on the next line
-            yPosition += 5;
+            // Company on the same line as title
             doc.setFont('helvetica', 'normal');
-            doc.text(`${exp.company || 'Company'}`, margin, yPosition);
+            const titleWidth = doc.getTextWidth(exp.title || 'Position');
+            if (exp.company) {
+              doc.setFontSize(10);
+              doc.text(`at ${exp.company}`, margin + titleWidth + 5, yPosition);
+            }
             
             // Add dates
-            yPosition += 5;
             doc.setFontSize(9);
-            doc.setTextColor(100, 100, 100);
-            doc.text(exp.dates || '', margin, yPosition);
+            doc.setTextColor(...colors.accent);
+            if (exp.dates) {
+              doc.text(exp.dates, pageWidth - margin, yPosition, { align: 'right' });
+            }
+            yPosition += 5;
             
             // Add description if available
             if (exp.description) {
-              yPosition += 5;
-              doc.setFontSize(10);
-              doc.setTextColor(60, 60, 60);
+              doc.setFontSize(9);
+              doc.setTextColor(...colors.dark);
               const splitDescription = doc.splitTextToSize(exp.description, contentWidth);
               doc.text(splitDescription, margin, yPosition);
-              yPosition += splitDescription.length * 5;
+              yPosition += splitDescription.length * 4;
             }
             
             // Add spacing and divider between jobs
             if (index < enhancementResult.cvData.work_experience.length - 1) {
               yPosition += 5;
-              doc.setDrawColor(220, 220, 220);
-              doc.line(margin, yPosition, margin + 40, yPosition);
-              yPosition += 8;
+              doc.setDrawColor(...colors.mediumGray);
+              doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
+              yPosition += 5;
             } else {
               yPosition += 8;
             }
@@ -747,7 +748,7 @@ export const generateEnhancementPDF = async (
       }
     }
     
-    // Education Section
+    // Education Section with improved styling
     educationSection = enhancementResult.sectionEnhancements?.find(section => 
       section?.section?.toLowerCase?.()?.includes('education') || 
       section?.section?.toLowerCase?.()?.includes('educación') ||
@@ -766,113 +767,120 @@ export const generateEnhancementPDF = async (
         yPosition = margin;
       }
       
+      // Section heading with accent bar
+      doc.setFillColor(...colors.primary);
+      doc.rect(margin, yPosition, 8, 1, 'F');
+      
       doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Educación', margin, yPosition);
-      yPosition += 6;
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Educación', margin, yPosition + 6);
+      yPosition += 10;
       
       // First try to use enhanced content if available
       if (educationSection?.enhancedContent) {
-        // Try to extract individual education entries if they exist in the fullEnhancedCvText
-        if (enhancementResult.fullEnhancedCvText && 
-            (enhancementResult.fullEnhancedCvText.includes("Master") || 
-             enhancementResult.fullEnhancedCvText.includes("Bachelor") ||
-             enhancementResult.fullEnhancedCvText.includes("Degree") ||
-             enhancementResult.fullEnhancedCvText.includes("Universidad"))) {
+        try {
+          // Extract and format education entries
+          const educationText = stripHtml(educationSection.enhancedContent);
           
-          try {
-            // Try to extract degrees and institutions
-            const educationText = enhancementResult.fullEnhancedCvText || '';
-            
-            // Look for degree patterns
-            const degreeMatches = educationText.match(/([A-Za-z\']+(?:\s+[A-Za-z\']+)*\s+(?:Degree|in|Bachelor|Master|Engineer|Diploma|Certificate))(?:\s+in\s+|\s+)([A-Za-z\s,]+)(?:[,]\s+|\s+at\s+|\s+-)?\s+([A-Za-z\s]+University|[A-Za-z\s]+Institute|[A-Za-z\s]+College|Universidad\s+[A-Za-z\s]+)(?:\s+\(|\s+|\()([0-9]{4})/gi);
-            
-            if (degreeMatches && degreeMatches.length > 0) {
-              for (const degreeText of degreeMatches) {
-                // Extract degree components (approximate - this is complex pattern matching)
-                const degree = degreeText.match(/[A-Za-z\']+(?:\s+[A-Za-z\']+)*\s+(?:Degree|in|Bachelor|Master|Engineer|Diploma|Certificate)(?:\s+in\s+|\s+)[A-Za-z\s,]+/i)?.[0] || '';
-                const institution = degreeText.match(/([A-Za-z\s]+University|[A-Za-z\s]+Institute|[A-Za-z\s]+College|Universidad\s+[A-Za-z\s]+)/i)?.[0] || '';
-                const year = degreeText.match(/([0-9]{4})/)?.[0] || '';
-                
-                // Add education details
-                doc.setFontSize(11);
-                doc.setTextColor(40, 40, 40);
-                doc.setFont('helvetica', 'bold');
-                doc.text(degree.trim() || 'Degree', margin, yPosition);
-                yPosition += 5;
-                
-                // Add institution
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(institution.trim() || 'Institution', margin, yPosition);
-                
-                // Add year on the same line, aligned right
-                if (year) {
-                  doc.text(year, pageWidth - margin, yPosition, { align: 'right' });
-                }
-                
-                yPosition += 8;
+          // If it looks like JSON data
+          if (educationText.includes('"degree":') || educationText.includes('"institution":')) {
+            try {
+              // Try to parse it as JSON
+              const eduEntries = JSON.parse(educationText.replace(/'/g, '"'));
+              if (Array.isArray(eduEntries)) {
+                eduEntries.forEach((edu, index) => {
+                  // Format each education entry
+                  doc.setFontSize(11);
+                  doc.setTextColor(...colors.dark);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(edu.degree || 'Degree', margin, yPosition);
+                  
+                  // Institution and dates
+                  doc.setFontSize(10);
+                  doc.setFont('helvetica', 'normal');
+                  if (edu.institution) {
+                    doc.text(edu.institution, margin, yPosition + 5);
+                  }
+                  
+                  // Date aligned right
+                  if (edu.dates) {
+                    doc.setTextColor(...colors.accent);
+                    doc.text(edu.dates, pageWidth - margin, yPosition + 5, { align: 'right' });
+                  }
+                  
+                  yPosition += 10;
+                  
+                  // Add spacing and subtle divider between entries
+                  if (index < eduEntries.length - 1) {
+                    doc.setDrawColor(...colors.mediumGray);
+                    doc.line(margin + 10, yPosition - 4, margin + 40, yPosition - 4);
+                    yPosition += 4;
+                  }
+                });
+              } else {
+                // Display as plain text
+                const splitEducation = doc.splitTextToSize(educationText, contentWidth);
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.dark);
+                doc.text(splitEducation, margin, yPosition);
+                yPosition += splitEducation.length * 4 + 5;
               }
-            } else {
-              // Fall back to raw content
-              doc.setFontSize(10);
-              doc.setTextColor(60, 60, 60);
-              const educationText = stripHtml(educationSection.enhancedContent);
+            } catch (e) {
+              // Display as plain text if parsing fails
               const splitEducation = doc.splitTextToSize(educationText, contentWidth);
+              doc.setFontSize(9);
+              doc.setTextColor(...colors.dark);
               doc.text(splitEducation, margin, yPosition);
-              yPosition += splitEducation.length * 5 + 8;
+              yPosition += splitEducation.length * 4 + 5;
             }
-          } catch (err) {
-            // On any error parsing education details, fall back to raw content
-            console.error("Error parsing education details:", err);
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
+          } else {
+            // Format as plain text
+            const splitEducation = doc.splitTextToSize(educationText, contentWidth);
+            doc.setFontSize(9);
+            doc.setTextColor(...colors.dark);
+            doc.text(splitEducation, margin, yPosition);
+            yPosition += splitEducation.length * 4 + 5;
+          }
+        } catch (err) {
+          // On any error parsing education details, fall back to raw content
+          console.error("Error parsing education details:", err);
+          // Fall back to original education data
+          if (enhancementResult.cvData?.education && enhancementResult.cvData.education.length > 0) {
+            renderOriginalEducation();
+          } else {
+            // If all else fails, display the raw text
             const educationText = stripHtml(educationSection.enhancedContent);
             const splitEducation = doc.splitTextToSize(educationText, contentWidth);
+            doc.setFontSize(9);
+            doc.setTextColor(...colors.dark);
             doc.text(splitEducation, margin, yPosition);
-            yPosition += splitEducation.length * 5 + 8;
+            yPosition += splitEducation.length * 4 + 5;
           }
-        } else {
-          // Fall back to using the raw enhanced content
-          doc.setFontSize(10);
-          doc.setTextColor(60, 60, 60);
-          
-          // Ensure we're working with a string
-          let educationText;
-          if (typeof educationSection.enhancedContent === 'object') {
-            // If it's an object, try to extract meaningful properties
-            const obj = educationSection.enhancedContent as any;
-            const parts = [];
-            if (obj.degree) parts.push(`${obj.degree}`);
-            if (obj.institution) parts.push(`at ${obj.institution}`);
-            if (obj.dates) parts.push(`(${obj.dates})`);
-            educationText = parts.join(' ') || JSON.stringify(obj, null, 2);
-          } else {
-            educationText = stripHtml(educationSection.enhancedContent);
-          }
-          
-          const splitEducation = doc.splitTextToSize(educationText, contentWidth);
-          doc.text(splitEducation, margin, yPosition);
-          yPosition += splitEducation.length * 5 + 8;
         }
       } else {
         // If no enhanced content, use original CV data
+        renderOriginalEducation();
+      }
+      
+      function renderOriginalEducation() {
         if (enhancementResult.cvData?.education && enhancementResult.cvData.education.length > 0) {
           enhancementResult.cvData.education.forEach((edu, index) => {
             // Add education details
             doc.setFontSize(11);
-            doc.setTextColor(40, 40, 40);
+            doc.setTextColor(...colors.dark);
             doc.setFont('helvetica', 'bold');
             doc.text(edu.degree || 'Degree', margin, yPosition);
             
             // Add institution on the next line
             yPosition += 5;
             doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
             doc.text(`${edu.institution || 'Institution'}`, margin, yPosition);
             
             // Add dates aligned right
             doc.setFontSize(9);
-            doc.setTextColor(100, 100, 100);
+            doc.setTextColor(...colors.accent);
             if (edu.dates) {
               doc.text(edu.dates, pageWidth - margin, yPosition, { align: 'right' });
             }
@@ -880,9 +888,9 @@ export const generateEnhancementPDF = async (
             // Add spacing and divider between education entries
             if (index < enhancementResult.cvData.education.length - 1) {
               yPosition += 5;
-              doc.setDrawColor(220, 220, 220);
-              doc.line(margin, yPosition, margin + 40, yPosition);
-              yPosition += 8;
+              doc.setDrawColor(...colors.mediumGray);
+              doc.line(margin + 10, yPosition, margin + 40, yPosition);
+              yPosition += 5;
             } else {
               yPosition += 8;
             }
@@ -891,7 +899,7 @@ export const generateEnhancementPDF = async (
       }
     }
     
-    // Certifications Section
+    // Certifications section with improved formatting
     const certificationsSection = enhancementResult.sectionEnhancements?.find(section => 
       section?.section?.toLowerCase?.()?.includes('certif')
     );
@@ -903,103 +911,88 @@ export const generateEnhancementPDF = async (
         yPosition = margin;
       }
       
+      // Section heading with accent bar
+      doc.setFillColor(...colors.primary);
+      doc.rect(margin, yPosition, 8, 1, 'F');
+      
       doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Certificaciones', margin, yPosition);
-      yPosition += 6;
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Certificaciones', margin, yPosition + 6);
+      yPosition += 10;
       
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
+      // Format certification content
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.dark);
+      doc.setFont('helvetica', 'normal');
       
-      // Handle HTML content - strip tags and create paragraphs
-      const certificationsText = stripHtml(certificationsSection.enhancedContent);
-      const splitCertifications = doc.splitTextToSize(certificationsText, contentWidth);
-      doc.text(splitCertifications, margin, yPosition);
-      yPosition += splitCertifications.length * 5 + 8;
-    }
-    
-    // Languages Section - New Addition
-    const languagesSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase?.()?.includes('language') || 
-      section?.section?.toLowerCase?.()?.includes('idioma')
-    );
-    
-    if (languagesSection?.enhancedContent) {
-      // Add new page if there's not enough space
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = margin;
+      try {
+        // Check if certifications content is structured
+        const certText = stripHtml(certificationsSection.enhancedContent);
+        
+        // If it looks like JSON data
+        if (certText.includes('"name":') || certText.includes('"title":')) {
+          try {
+            // Try to parse it as JSON
+            const certEntries = JSON.parse(certText.replace(/'/g, '"'));
+            if (Array.isArray(certEntries)) {
+              certEntries.forEach((cert, index) => {
+                // Format each certification
+                doc.setFontSize(10);
+                doc.setTextColor(...colors.dark);
+                doc.setFont('helvetica', 'bold');
+                doc.text(cert.name || cert.title || 'Certification', margin, yPosition);
+                
+                // Issuer and date
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                if (cert.issuer) {
+                  doc.text(cert.issuer, margin, yPosition + 4);
+                }
+                
+                // Date aligned right
+                if (cert.date) {
+                  doc.setTextColor(...colors.accent);
+                  doc.text(cert.date, pageWidth - margin, yPosition + 4, { align: 'right' });
+                }
+                
+                yPosition += 8;
+                
+                // Add subtle divider between entries
+                if (index < certEntries.length - 1) {
+                  doc.setDrawColor(...colors.mediumGray);
+                  doc.setLineWidth(0.2);
+                  doc.line(margin + 5, yPosition - 2, margin + 30, yPosition - 2);
+                  yPosition += 3;
+                }
+              });
+            } else {
+              // Display as plain text
+              const splitCerts = doc.splitTextToSize(certText, contentWidth);
+              doc.text(splitCerts, margin, yPosition);
+              yPosition += splitCerts.length * 4 + 5;
+            }
+          } catch (e) {
+            // Display as plain text if parsing fails
+            const splitCerts = doc.splitTextToSize(certText, contentWidth);
+            doc.text(splitCerts, margin, yPosition);
+            yPosition += splitCerts.length * 4 + 5;
+          }
+        } else {
+          // Format as plain text
+          const splitCerts = doc.splitTextToSize(certText, contentWidth);
+          doc.text(splitCerts, margin, yPosition);
+          yPosition += splitCerts.length * 4 + 5;
+        }
+      } catch (error) {
+        console.error("Error processing certifications:", error);
+        
+        // Fall back to plain text
+        const certText = stripHtml(certificationsSection.enhancedContent);
+        const splitCerts = doc.splitTextToSize(certText, contentWidth);
+        doc.text(splitCerts, margin, yPosition);
+        yPosition += splitCerts.length * 4 + 8;
       }
-      
-      doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Idiomas', margin, yPosition);
-      yPosition += 6;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      // Handle HTML content - strip tags and create paragraphs
-      const languagesText = stripHtml(languagesSection.enhancedContent);
-      const splitLanguages = doc.splitTextToSize(languagesText, contentWidth);
-      doc.text(splitLanguages, margin, yPosition);
-      yPosition += splitLanguages.length * 5 + 8;
-    }
-    
-    // Projects Section - New Addition
-    const projectsSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase?.()?.includes('project') || 
-      section?.section?.toLowerCase?.()?.includes('proyecto')
-    );
-    
-    if (projectsSection?.enhancedContent) {
-      // Add new page if there's not enough space
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = margin;
-      }
-      
-      doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Proyectos', margin, yPosition);
-      yPosition += 6;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      // Handle HTML content - strip tags and create paragraphs
-      const projectsText = stripHtml(projectsSection.enhancedContent);
-      const splitProjects = doc.splitTextToSize(projectsText, contentWidth);
-      doc.text(splitProjects, margin, yPosition);
-      yPosition += splitProjects.length * 5 + 8;
-    }
-    
-    // References Section - New Addition
-    const referencesSection = enhancementResult.sectionEnhancements?.find(section => 
-      section?.section?.toLowerCase?.()?.includes('reference') || 
-      section?.section?.toLowerCase?.()?.includes('referencia')
-    );
-    
-    if (referencesSection?.enhancedContent) {
-      // Add new page if there's not enough space
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = margin;
-      }
-      
-      doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Referencias', margin, yPosition);
-      yPosition += 6;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      // Handle HTML content - strip tags and create paragraphs
-      const referencesText = stripHtml(referencesSection.enhancedContent);
-      const splitReferences = doc.splitTextToSize(referencesText, contentWidth);
-      doc.text(splitReferences, margin, yPosition);
-      yPosition += splitReferences.length * 5 + 8;
     }
     
     // Add any other sections from enhancement result
@@ -1021,19 +1014,25 @@ export const generateEnhancementPDF = async (
           yPosition = margin;
         }
         
-        doc.setFontSize(14);
-        doc.setTextColor(30, 64, 175); // Indigo
-        doc.text(section.section, margin, yPosition);
-        yPosition += 6;
+        // Section heading with accent bar
+        doc.setFillColor(...colors.primary);
+        doc.rect(margin, yPosition, 8, 1, 'F');
         
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.text(section.section, margin, yPosition + 6);
+        yPosition += 10;
+        
+        doc.setFontSize(9);
+        doc.setTextColor(...colors.dark);
+        doc.setFont('helvetica', 'normal');
         
         // Handle HTML content - strip tags and create paragraphs
         const sectionText = stripHtml(section.enhancedContent);
         const splitSection = doc.splitTextToSize(sectionText, contentWidth);
         doc.text(splitSection, margin, yPosition);
-        yPosition += splitSection.length * 5 + 8;
+        yPosition += splitSection.length * 4 + 8;
       });
     }
     
@@ -1043,27 +1042,48 @@ export const generateEnhancementPDF = async (
         !educationSection?.enhancedContent && 
         enhancementResult.fullEnhancedCvText) {
       
-      doc.setFontSize(14);
-      doc.setTextColor(30, 64, 175); // Indigo
-      doc.text('Currículum Vitae Completo', margin, yPosition);
-      yPosition += 6;
+      // Section heading with accent bar
+      doc.setFillColor(...colors.primary);
+      doc.rect(margin, yPosition, 8, 1, 'F');
       
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(14);
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Currículum Vitae Completo', margin, yPosition + 6);
+      yPosition += 10;
+      
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.dark);
+      doc.setFont('helvetica', 'normal');
       
       const fullText = stripHtml(enhancementResult.fullEnhancedCvText);
       const splitFullText = doc.splitTextToSize(fullText, contentWidth);
       doc.text(splitFullText, margin, yPosition);
     }
     
-    // Add footer with date
+    // Add professional footer
+    doc.setDrawColor(...colors.mediumGray);
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+    
     doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(...colors.accent);
+    doc.setFont('helvetica', 'normal');
     const date = new Date().toLocaleDateString();
     doc.text(`Generado: ${date}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+    doc.text('CVPANDA - Optimizador de Currículum', margin, pageHeight - 10);
     
-    // Save the PDF
-    doc.save(`CV_Optimizado_${jobTitle.replace(/\s+/g, '_')}.pdf`);
+    // Add page numbers
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.accent);
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    }
+    
+    // Save the PDF with a professional filename
+    const safeFileName = jobTitle.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+    doc.save(`CV_Profesional_${safeFileName}.pdf`);
     
   } catch (error) {
     console.error('Error generating PDF:', error);
