@@ -1,8 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { Document, Paragraph, TextRun, HeadingLevel, Packer } from 'docx';
 import type { CV, ProfileEnhancementResult } from '../types';
-import 'jspdf-autotable';
-import autoTable from 'jspdf-autotable';
 
 export async function generatePDF(cv: CV, language: 'original' | 'english' = 'original') {
   const data = language === 'english' ? cv.parsed_data_english : cv.parsed_data;
