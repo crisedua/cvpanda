@@ -599,104 +599,121 @@ export const generateEnhancementPDF = async (
       
       // Add experience items
       doc.setTextColor(...colors.dark);
-      // Ensures we have something to render
-      if (enhancementResult.enhancedWorkExperience || enhancementResult.cvData?.work_experience) {
+
+      let experienceRendered = false; // Flag to track if any experience was rendered
+
+      // --- Try Enhanced Work Experience First ---
+      if (enhancementResult.enhancedWorkExperience) {
         try {
-          if (enhancementResult.enhancedWorkExperience) {
-            const expData = JSON.parse(enhancementResult.enhancedWorkExperience);
-            if (Array.isArray(expData) && expData.length > 0) {
-              expData.forEach((exp, index) => {
-                // Job title (position)
-                doc.setFontSize(11);
-                doc.setTextColor(...colors.dark);
-                doc.setFont('helvetica', 'bold');
-                doc.text(exp.title || exp.position || 'Position', margin, yPosition);
-                
-                // Company on the same line as title
-                doc.setFont('helvetica', 'normal');
-                const titleWidth = doc.getTextWidth(exp.title || exp.position || 'Position');
-                if (exp.company) {
-                  doc.setFontSize(10);
-                  doc.text(`at ${exp.company}`, margin + titleWidth + 5, yPosition);
-                }
-                
-                // Add dates
-                doc.setFontSize(9);
-                doc.setTextColor(...colors.accent);
-                if (exp.dates || exp.duration) {
-                  doc.text(exp.dates || exp.duration, pageWidth - margin, yPosition, { align: 'right' });
-                }
+          const expData = JSON.parse(enhancementResult.enhancedWorkExperience);
+          if (Array.isArray(expData) && expData.length > 0) {
+            expData.forEach((exp, index) => {
+              // Check for page break before rendering item
+              if (yPosition > pageHeight - 60) { // Estimate height needed for one entry
+                doc.addPage();
+                yPosition = margin;
+              }
+
+              // Job title (position)
+              doc.setFontSize(11);
+              doc.setTextColor(...colors.dark);
+              doc.setFont('helvetica', 'bold');
+              const titleText = exp.title || exp.position || 'Position Not Specified';
+              doc.text(titleText, margin, yPosition);
+              
+              // Company on the same line as title
+              doc.setFont('helvetica', 'normal');
+              const titleWidth = doc.getTextWidth(titleText);
+              if (exp.company) {
+                doc.setFontSize(10);
+                // Truncate company name if too long to fit on the line
+                const availableWidth = contentWidth - titleWidth - 10; // Space for 'at ' and padding
+                const companyText = `at ${exp.company}`;
+                const truncatedCompany = doc.splitTextToSize(companyText, availableWidth)[0];
+                doc.text(truncatedCompany, margin + titleWidth + 5, yPosition);
+              }
+              
+              // Add dates aligned right
+              doc.setFontSize(9);
+              doc.setTextColor(...colors.accent);
+              if (exp.dates || exp.duration) {
+                doc.text(exp.dates || exp.duration, pageWidth - margin, yPosition, { align: 'right' });
+              }
+              yPosition += 5;
+              
+              // Add job role if available
+              if (exp.role || exp.jobRole) {
+                 if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = margin; } // Check page break
+                doc.setTextColor(...colors.secondary);
+                doc.setFont('helvetica', 'italic');
+                const roleText = `Rol: ${exp.role || exp.jobRole}`;
+                const splitRole = doc.splitTextToSize(roleText, contentWidth);
+                doc.text(splitRole, margin, yPosition);
+                yPosition += splitRole.length * 4 + 1; // Adjust spacing
+                doc.setFont('helvetica', 'normal'); // Reset font style
+              }
+              
+              // Add description
+              doc.setFontSize(9);
+              doc.setTextColor(...colors.dark);
+              let description = '';
+              if (exp.description && typeof exp.description === 'string') {
+                description = exp.description;
+              } else if (exp.achievements && Array.isArray(exp.achievements)) {
+                description = exp.achievements.map(a => `• ${stripHtml(String(a))}`).join("\n");
+              } else if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
+                description = exp.responsibilities.map(r => `• ${stripHtml(String(r))}`).join("\n");
+              }
+              
+              if (description) {
+                 if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; } // Check page break
+                const splitDescription = doc.splitTextToSize(stripHtml(description), contentWidth);
+                doc.text(splitDescription, margin, yPosition);
+                yPosition += splitDescription.length * 4 + 2; // Adjust spacing
+              }
+              
+              // Add spacing between jobs
+              if (index < expData.length - 1) {
                 yPosition += 5;
-                
-                // Add job role if available
-                if (exp.role || exp.jobRole) {
-                  doc.setTextColor(...colors.secondary);
-                  doc.setFont('helvetica', 'italic');
-                  doc.text(`Rol: ${exp.role || exp.jobRole}`, margin, yPosition);
-                  doc.setFont('helvetica', 'normal');
-                  yPosition += 5;
-                }
-                
-                // Add description
-                doc.setFontSize(9);
-                doc.setTextColor(...colors.dark);
-                // Handle different description formats
-                let description = '';
-                
-                if (exp.description && typeof exp.description === 'string') {
-                  description = exp.description;
-                } else if (exp.achievements && Array.isArray(exp.achievements)) {
-                  description = exp.achievements.join("\n• ");
-                  if (description) description = "• " + description;
-                } else if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
-                  description = exp.responsibilities.join("\n• ");
-                  if (description) description = "• " + description;
-                }
-                
-                if (description) {
-                  const splitDescription = doc.splitTextToSize(description, contentWidth);
-                  doc.text(splitDescription, margin, yPosition);
-                  yPosition += splitDescription.length * 4;
-                }
-                
-                // Add spacing between jobs
-                if (index < expData.length - 1) {
-                  yPosition += 5;
-                  doc.setDrawColor(...colors.mediumGray);
-                  doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
-                  yPosition += 5;
-                } else {
-                  yPosition += 8;
-                }
-              });
-            } else {
-              fallbackToOriginalWorkExperience();
-            }
-          } else {
-            fallbackToOriginalWorkExperience();
+                 if (yPosition > pageHeight - 10) { doc.addPage(); yPosition = margin; } // Check page break
+                doc.setDrawColor(...colors.mediumGray);
+                doc.setLineWidth(0.2); // Make divider thinner
+                doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
+                yPosition += 5;
+              } else {
+                yPosition += 8; // Space after the last job
+              }
+              experienceRendered = true; // Mark as rendered
+            });
           }
         } catch (error) {
-          console.error('Error parsing enhancedWorkExperience:', error);
-          fallbackToOriginalWorkExperience();
+          console.error('Error parsing or rendering enhancedWorkExperience:', error);
+          // Fallback will be attempted below if experienceRendered is still false
         }
       }
       
-      // Helper function to use original work experience data
-      function fallbackToOriginalWorkExperience() {
-        if (enhancementResult.cvData?.work_experience && enhancementResult.cvData.work_experience.length > 0) {
+      // --- Fallback to Original Work Experience ---
+      // Only fallback if enhanced experience wasn't rendered successfully
+      if (!experienceRendered && enhancementResult.cvData?.work_experience && enhancementResult.cvData.work_experience.length > 0) {
           enhancementResult.cvData.work_experience.forEach((exp, index) => {
+             if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; } // Check page break
+
             // Add job position details
             doc.setFontSize(11);
             doc.setTextColor(...colors.dark);
             doc.setFont('helvetica', 'bold');
-            doc.text(exp.title || 'Position', margin, yPosition);
+            const titleText = exp.title || 'Position Not Specified';
+            doc.text(titleText, margin, yPosition);
             
             // Company on the same line as title
             doc.setFont('helvetica', 'normal');
-            const titleWidth = doc.getTextWidth(exp.title || 'Position');
-            if (exp.company) {
-              doc.setFontSize(10);
-              doc.text(`at ${exp.company}`, margin + titleWidth + 5, yPosition);
+            const titleWidth = doc.getTextWidth(titleText);
+             if (exp.company) {
+                doc.setFontSize(10);
+                const availableWidth = contentWidth - titleWidth - 10;
+                const companyText = `at ${exp.company}`;
+                const truncatedCompany = doc.splitTextToSize(companyText, availableWidth)[0];
+                doc.text(truncatedCompany, margin + titleWidth + 5, yPosition);
             }
             
             // Add dates
@@ -710,33 +727,49 @@ export const generateEnhancementPDF = async (
             // Add job role if available
             const role = (exp as any).role || (exp as any).jobRole;
             if (role) {
+              if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = margin; } // Check page break
               doc.setTextColor(...colors.secondary);
               doc.setFont('helvetica', 'italic');
-              doc.text(`Rol: ${role}`, margin, yPosition);
-              doc.setFont('helvetica', 'normal');
-              yPosition += 5;
+               const roleText = `Rol: ${role}`;
+               const splitRole = doc.splitTextToSize(roleText, contentWidth);
+               doc.text(splitRole, margin, yPosition);
+               yPosition += splitRole.length * 4 + 1;
+               doc.setFont('helvetica', 'normal'); // Reset font style
             }
             
             // Add description if available
             if (exp.description) {
+               if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; } // Check page break
               doc.setFontSize(9);
               doc.setTextColor(...colors.dark);
-              const splitDescription = doc.splitTextToSize(exp.description, contentWidth);
+              const descriptionText = stripHtml(exp.description); // Ensure HTML is stripped
+              const splitDescription = doc.splitTextToSize(descriptionText, contentWidth);
               doc.text(splitDescription, margin, yPosition);
-              yPosition += splitDescription.length * 4;
+              yPosition += splitDescription.length * 4 + 2;
             }
             
             // Add spacing and divider between jobs
             if (index < enhancementResult.cvData.work_experience.length - 1) {
               yPosition += 5;
+               if (yPosition > pageHeight - 10) { doc.addPage(); yPosition = margin; } // Check page break
               doc.setDrawColor(...colors.mediumGray);
+              doc.setLineWidth(0.2);
               doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
               yPosition += 5;
             } else {
-              yPosition += 8;
+              yPosition += 8; // Space after the last job
             }
+             experienceRendered = true; // Mark as rendered
           });
-        }
+      }
+
+      // Add message if no experience could be rendered
+      if (!experienceRendered) {
+          doc.setFontSize(10);
+          doc.setTextColor(...colors.accent);
+          doc.setFont('helvetica', 'italic');
+          doc.text("No se encontró información de experiencia profesional para mostrar.", margin, yPosition);
+          yPosition += 10;
       }
     }
     
