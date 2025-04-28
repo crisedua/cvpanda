@@ -309,6 +309,84 @@ export const generateEnhancementPDF = async (
       unit: 'mm',
       format: 'a4'
     });
+
+    // Check if jsPDF-autotable is properly loaded
+    // Because roundedRect is a method added by the plugin
+    if (!doc.roundedRect) {
+      // Add roundedRect method if it doesn't exist
+      doc.roundedRect = function(x, y, w, h, r, tl, tr, bl, br, style) {
+        const BOX_STYLE_NONE = '';
+        const BOX_STYLE_FILL = 'F';
+        const BOX_STYLE_STROKE = 'S';
+        const BOX_STYLE_FILLSTROKE = 'DF';
+        
+        if (style === undefined || style === null) {
+          style = BOX_STYLE_FILLSTROKE;
+        }
+        
+        if (!Array.isArray(r)) {
+          r = [r, r, r, r];
+        }
+        
+        tl = r[0];
+        tr = r[1] || r[0];
+        bl = r[2] || r[0];
+        br = r[3] || r[0];
+        
+        const x_tl = x + tl;
+        const y_tl = y;
+        
+        const x_tr = x + w - tr;
+        const y_tr = y;
+        
+        const x_bl = x + bl;
+        const y_bl = y + h;
+        
+        const x_br = x + w - br;
+        const y_br = y + h;
+        
+        const x_lm = x;
+        const y_lm = y + bl;
+        
+        const x_rm = x + w;
+        const y_rm = y + tr;
+        
+        const x_tm = x + tl;
+        const y_tm = y;
+        
+        const x_bm = x + bl;
+        const y_bm = y + h;
+        
+        this.lines(
+          [
+            [tl, bl, w - (tl + tr), -(h - (bl + br))],
+            [tr, -br, -(w - (tl + tr)), h - (bl + br)],
+          ],
+          x,
+          y,
+          [1, 1],
+          style
+        );
+        
+        if (tl) {
+          this.arc(x_tl, y_lm, tl, Math.PI, Math.PI * 1.5, false, style);
+        }
+        
+        if (tr) {
+          this.arc(x_tr, y_tr + tr, tr, -Math.PI / 2, 0, false, style);
+        }
+        
+        if (br) {
+          this.arc(x_br, y_br - br, br, 0, Math.PI / 2, false, style);
+        }
+        
+        if (bl) {
+          this.arc(x_bl, y_bl - bl, bl, Math.PI / 2, Math.PI, false, style);
+        }
+        
+        return this;
+      };
+    }
     
     // ONLY use built-in fonts that are guaranteed to work
     doc.setFont('helvetica', 'normal');
