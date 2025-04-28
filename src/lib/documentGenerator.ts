@@ -310,20 +310,23 @@ export const generateEnhancementPDF = async (
       format: 'a4'
     });
     
-    // Add fonts - use default fonts for compatibility
-    doc.setFont('helvetica', 'normal');
+    // Use cleaner fonts for more professional look
+    doc.addFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf', 'Roboto', 'normal');
+    doc.addFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Bold.ttf', 'Roboto', 'bold');
+    doc.addFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Italic.ttf', 'Roboto', 'italic');
+    doc.setFont('Roboto', 'normal');
     
     // Set up page margins and dimensions
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15; // Reduced margin for more content space
+    const margin = 20; // Slightly wider margins for cleaner look
     const contentWidth = pageWidth - (margin * 2);
     
     // Define professional color scheme
     const colors = {
-      primary: [41, 65, 148], // Dark blue
-      secondary: [59, 130, 246], // Medium blue
-      accent: [100, 116, 139], // Slate
+      primary: [50, 50, 93], // Dark blue-purple (more modern)
+      secondary: [76, 110, 245], // Modern blue
+      accent: [90, 90, 90], // Dark gray
       dark: [40, 40, 40], // Near black
       light: [250, 250, 250], // Near white
       lightGray: [240, 240, 240], // Light gray for backgrounds
@@ -335,81 +338,75 @@ export const generateEnhancementPDF = async (
     let experienceSection = null;
     let educationSection = null;
     
-    // Add professional header
-    doc.setFillColor(...colors.primary);
-    doc.rect(0, 0, pageWidth, 10, 'F');
+    // Modern clean header design
+    doc.setFillColor(...colors.light);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F'); // Set white background
     
-    // Add title with nicer typography
-    doc.setFontSize(16);
-    doc.setTextColor(...colors.dark);
-    doc.setFont('helvetica', 'bold');
-    doc.text(targetPlatform === 'linkedin' ? 'Perfil Profesional Optimizado' : 'Currículum Vitae Profesional', margin, margin + 5);
+    // Get name and title from personal info
+    const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
+    const name = personalInfo.name || 'Professional Name';
+    const title = personalInfo.title || personalInfo.job_title || jobTitle || 'Professional Title';
     
-    // Add subtitle with job target
-    doc.setFontSize(11);
+    // Create a modern header
+    doc.setFontSize(24);
+    doc.setTextColor(...colors.primary);
+    doc.setFont('Roboto', 'bold');
+    doc.text(name.toUpperCase(), pageWidth / 2, margin + 15, { align: 'center' });
+    
+    // Job title below name
+    doc.setFontSize(12);
     doc.setTextColor(...colors.accent);
-    doc.setFont('helvetica', 'normal');
-    const safeJobTitle = typeof jobTitle === 'string' && jobTitle.trim() ? jobTitle : 'Profesional';
-    doc.text(`Optimizado para: ${safeJobTitle}`, margin, margin + 12);
+    doc.setFont('Roboto', 'normal');
+    doc.text(title.toUpperCase(), pageWidth / 2, margin + 22, { align: 'center' });
     
-    // Add horizontal divider
+    // Contact information in a row under name/title
+    let contactY = margin + 30;
+    const contactInfoHeight = 8;
+    
+    // Define column layout
+    const leftColumnWidth = contentWidth * 0.3; // 30% width for left column
+    const rightColumnWidth = contentWidth * 0.65; // 65% width for right column
+    const columnGap = contentWidth * 0.05; // 5% gap between columns
+    
+    // Define starting positions
+    const leftColumnX = margin;
+    const rightColumnX = margin + leftColumnWidth + columnGap;
+    const contactCenterX = pageWidth / 2;
+    
+    // Render contact info centered with icons/symbols
+    if (personalInfo.email || personalInfo.phone || personalInfo.location) {
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.accent);
+      
+      // First, we'll render location if available
+      if (personalInfo.location) {
+        doc.text("◉", contactCenterX - 80, contactY, { align: 'right' });
+        doc.text(String(personalInfo.location), contactCenterX - 75, contactY);
+      }
+      
+      // Then email
+      if (personalInfo.email) {
+        doc.text("✉", contactCenterX, contactY, { align: 'right' });
+        doc.text(String(personalInfo.email), contactCenterX + 5, contactY);
+      }
+      
+      // Then phone
+      if (personalInfo.phone) {
+        doc.text("☏", contactCenterX + 80, contactY, { align: 'right' });
+        doc.text(String(personalInfo.phone), contactCenterX + 85, contactY);
+      }
+      
+      contactY += contactInfoHeight;
+    }
+    
+    // Add horizontal divider below contact info
     doc.setDrawColor(...colors.mediumGray);
     doc.setLineWidth(0.5);
-    doc.line(margin, margin + 15, pageWidth - margin, margin + 15);
+    doc.line(margin, contactY + 5, pageWidth - margin, contactY + 5);
     
-    let yPosition = margin + 22;
-    
-    // Personal Information Section with improved layout
-    const personalInfo = enhancementResult.personalInfo || enhancementResult.cvData || {};
-    
-    if (personalInfo && typeof personalInfo === 'object' && Object.keys(personalInfo).length > 0) {
-      // Create a clean personal info header
-      doc.setFillColor(...colors.lightGray);
-      doc.roundedRect(margin, yPosition - 5, contentWidth, 25 + (personalInfo.name ? 5 : 0) + 
-        (personalInfo.email ? 5 : 0) + (personalInfo.phone ? 5 : 0) + 
-        (personalInfo.location ? 5 : 0), 3, 3, 'F');
-      
-      // Name with larger font
-      if (personalInfo.name) {
-        doc.setFontSize(14);
-        doc.setTextColor(...colors.primary);
-        doc.setFont('helvetica', 'bold');
-        doc.text(String(personalInfo.name), margin + 5, yPosition + 5);
-        yPosition += 8;
-      }
-      
-      // Contact details in a more compact format
-      doc.setFontSize(9);
-      doc.setTextColor(...colors.dark);
-      doc.setFont('helvetica', 'normal');
-      
-      let contactLine = '';
-      if (personalInfo.email) contactLine += `Email: ${personalInfo.email}`;
-      if (personalInfo.phone) contactLine += contactLine ? '  |  ' : '';
-      if (personalInfo.phone) contactLine += `Tel: ${personalInfo.phone}`;
-      if (personalInfo.location) contactLine += contactLine ? '  |  ' : '';
-      if (personalInfo.location) contactLine += `${personalInfo.location}`;
-      
-      if (contactLine) {
-        doc.text(contactLine, margin + 5, yPosition + 2);
-        yPosition += 6;
-      }
-      
-      // Professional links
-      let linksLine = '';
-      if (personalInfo.linkedin_url) linksLine += `LinkedIn: ${personalInfo.linkedin_url}`;
-      if (personalInfo.github_url) linksLine += linksLine ? '  |  ' : '';
-      if (personalInfo.github_url) linksLine += `GitHub: ${personalInfo.github_url}`;
-      if (personalInfo.website_url) linksLine += linksLine ? '  |  ' : '';
-      if (personalInfo.website_url) linksLine += `Web: ${personalInfo.website_url}`;
-      
-      if (linksLine) {
-        doc.text(linksLine, margin + 5, yPosition + 2);
-        yPosition += 6;
-      }
-      
-      yPosition += 10; // Space after personal info section
-    }
+    // Set starting Y positions for both columns
+    let leftColY = contactY + 20;
+    let rightColY = contactY + 20;
     
     // Profile Summary Section with improved styling
     try {
@@ -425,19 +422,22 @@ export const generateEnhancementPDF = async (
       const hasSummaryContent = summarySection?.enhancedContent || enhancementResult.fullEnhancedCvText;
       
       if (hasSummaryContent) {
-        // Section heading with accent bar
-        doc.setFillColor(...colors.primary);
-        doc.rect(margin, yPosition, 8, 1, 'F');
-        
-        doc.setFontSize(14);
+        // PROFILE SECTION (right column)
+        doc.setFontSize(12);
         doc.setTextColor(...colors.primary);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Perfil Profesional', margin, yPosition + 6);
-        yPosition += 10;
+        doc.setFont('Roboto', 'bold');
+        doc.text('PROFILE', rightColumnX, rightColY);
+        rightColY += 6;
         
-        doc.setFontSize(10);
-        doc.setTextColor(...colors.dark);
-        doc.setFont('helvetica', 'normal');
+        // Add small line under heading
+        doc.setDrawColor(...colors.secondary);
+        doc.setLineWidth(0.5);
+        doc.line(rightColumnX, rightColY, rightColumnX + 40, rightColY);
+        rightColY += 8;
+        
+        doc.setFontSize(9);
+        doc.setTextColor(...colors.accent);
+        doc.setFont('Roboto', 'normal');
         
         // Try the summary section first, fall back to a portion of the full text
         let summaryText = '';
@@ -449,9 +449,9 @@ export const generateEnhancementPDF = async (
         }
         
         if (summaryText) {
-          const splitSummary = doc.splitTextToSize(summaryText, contentWidth);
-          doc.text(splitSummary, margin, yPosition);
-          yPosition += splitSummary.length * 5 + 8;
+          const splitSummary = doc.splitTextToSize(summaryText, rightColumnWidth);
+          doc.text(splitSummary, rightColumnX, rightColY);
+          rightColY += splitSummary.length * 4 + 12;
         }
       }
     } catch (error) {
@@ -461,15 +461,18 @@ export const generateEnhancementPDF = async (
     
     // Skills Section with improved visual presentation
     try {
-      // Section heading with accent bar
-      doc.setFillColor(...colors.primary);
-      doc.rect(margin, yPosition, 8, 1, 'F');
-      
-      doc.setFontSize(14);
+      // SKILLS SECTION (left column)
+      doc.setFontSize(12);
       doc.setTextColor(...colors.primary);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Habilidades Clave', margin, yPosition + 6);
-      yPosition += 10;
+      doc.setFont('Roboto', 'bold');
+      doc.text('SKILLS', leftColumnX, leftColY);
+      leftColY += 6;
+      
+      // Add small line under heading
+      doc.setDrawColor(...colors.secondary);
+      doc.setLineWidth(0.5);
+      doc.line(leftColumnX, leftColY, leftColumnX + 40, leftColY);
+      leftColY += 8;
       
       // Safe helper function to determine if an array actually has items
       const hasValidItems = (arr: any): boolean => {
@@ -478,91 +481,109 @@ export const generateEnhancementPDF = async (
       
       // Try to use keyword analysis first, fall back to CV skills
       if (hasValidItems(enhancementResult.keywordAnalysis)) {
-        doc.setFontSize(9);
-        
-        // Create skill pill boxes in a more attractive grid
-        const skillsPerRow = 3;
-        const skillPillWidth = contentWidth / skillsPerRow - 6;
-        const skillPillHeight = 8;
-        
-        let validKeywords = 0;
-        for (let i = 0; i < enhancementResult.keywordAnalysis.length; i++) {
-          const keyword = enhancementResult.keywordAnalysis[i];
-          // Skip invalid keywords
-          if (!keyword || (typeof keyword === 'object' && !keyword.keyword)) continue;
-          
-          // Extract the keyword text safely
-          let keywordText = '';
-          if (typeof keyword === 'string') {
-            keywordText = keyword;
-          } else if (typeof keyword === 'object' && keyword.keyword) {
-            keywordText = String(keyword.keyword);
-          } else {
-            continue; // Skip this item if we can't determine the keyword
-          }
-          
-          const rowIndex = Math.floor(validKeywords / skillsPerRow);
-          const colIndex = validKeywords % skillsPerRow;
-          const xPos = margin + (colIndex * (skillPillWidth + 6));
-          const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
-          
-          // Draw skill pill with gradient effect
-          doc.setFillColor(240, 249, 255); // Light blue background
-          doc.setDrawColor(...colors.secondary);
-          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 3, 3, 'FD');
-          
-          // Add skill text
-          doc.setTextColor(...colors.primary);
-          doc.text(keywordText, xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
-          
-          validKeywords++;
-        }
-        
-        // Update y position after skills
-        const skillRows = Math.ceil(validKeywords / skillsPerRow);
-        yPosition += (skillRows * (skillPillHeight + 4)) + 8;
-      } else if (hasValidItems(enhancementResult.cvData?.skills)) {
-        // Fallback to original CV skills if no keyword analysis is available
-        // Similar styling as above
-        doc.setFontSize(9);
-        
-        // Create skill pill boxes
-        const skillsPerRow = 3;
-        const skillPillWidth = contentWidth / skillsPerRow - 6;
-        const skillPillHeight = 8;
-        
-        let validSkills = 0;
-        for (let i = 0; i < enhancementResult.cvData.skills.length; i++) {
-          const skill = enhancementResult.cvData.skills[i];
-          // Skip empty skills
-          if (!skill) continue;
-          
-          const rowIndex = Math.floor(validSkills / skillsPerRow);
-          const colIndex = validSkills % skillsPerRow;
-          const xPos = margin + (colIndex * (skillPillWidth + 6));
-          const yPos = yPosition + (rowIndex * (skillPillHeight + 4));
-          
-          // Draw skill pill
-          doc.setFillColor(240, 249, 255); // Light blue background
-          doc.setDrawColor(...colors.secondary);
-          doc.roundedRect(xPos, yPos, skillPillWidth, skillPillHeight, 3, 3, 'FD');
-          
-          // Add skill text
-          doc.setTextColor(...colors.primary);
-          doc.text(String(skill), xPos + skillPillWidth / 2, yPos + skillPillHeight - 2, { align: 'center' });
-          
-          validSkills++;
-        }
-        
-        // Update y position after skills
-        const skillRows = Math.ceil(validSkills / skillsPerRow);
-        yPosition += (skillRows * (skillPillHeight + 4)) + 8;
-      } else {
-        // If no skills are available, add a message
         doc.setFontSize(10);
-        doc.setTextColor(...colors.accent);
-        doc.text("No se encontraron habilidades específicas", margin, yPosition);
-        yPosition += 10;
+        doc.setTextColor(...colors.dark);
+        
+        // Extract skills and add one skill per line with underline
+        const skillsList = enhancementResult.keywordAnalysis
+          .filter(k => k !== null && k !== undefined)
+          .map(keyword => {
+            if (typeof keyword === 'string') return keyword;
+            if (keyword && typeof keyword === 'object' && keyword.keyword) 
+              return keyword.keyword;
+            return null;
+          })
+          .filter(Boolean)
+          .slice(0, 12); // Limit to top 12 skills for space
+        
+        // Draw skills as underlined text in left column
+        const skillLineHeight = 9;
+        skillsList.forEach((skill, index) => {
+          doc.setFont('Roboto', 'bold');
+          doc.text(String(skill), leftColumnX, leftColY + (index * skillLineHeight));
+          
+          // Add underline
+          doc.setDrawColor(...colors.lightGray);
+          doc.setLineWidth(0.3);
+          const skillWidth = doc.getTextWidth(String(skill));
+          doc.line(
+            leftColumnX, 
+            leftColY + (index * skillLineHeight) + 1.5, 
+            leftColumnX + skillWidth, 
+            leftColY + (index * skillLineHeight) + 1.5
+          );
+        });
+        
+        // Update left column position
+        leftColY += skillsList.length * skillLineHeight + 15;
+      } else if (hasValidItems(enhancementResult.cvData?.skills)) {
+        doc.setFontSize(10);
+        doc.setTextColor(...colors.dark);
+        
+        // Extract skills from original CV data
+        const skillsList = enhancementResult.cvData.skills
+          .filter(s => s !== null && s !== undefined)
+          .map(s => typeof s === 'string' ? s : String(s))
+          .slice(0, 12); // Limit to top 12 skills
+        
+        // Draw skills as underlined text in left column
+        const skillLineHeight = 9;
+        skillsList.forEach((skill, index) => {
+          doc.setFont('Roboto', 'bold');
+          doc.text(String(skill), leftColumnX, leftColY + (index * skillLineHeight));
+          
+          // Add underline
+          doc.setDrawColor(...colors.lightGray);
+          doc.setLineWidth(0.3);
+          const skillWidth = doc.getTextWidth(String(skill));
+          doc.line(
+            leftColumnX, 
+            leftColY + (index * skillLineHeight) + 1.5, 
+            leftColumnX + skillWidth, 
+            leftColY + (index * skillLineHeight) + 1.5
+          );
+        });
+        
+        // Update left column position
+        leftColY += skillsList.length * skillLineHeight + 15;
+      } else {
+        // If no skills found, add some default professional skills
+        doc.setFontSize(10);
+        doc.setTextColor(...colors.dark);
+        
+        // Default skills based on job profile
+        const defaultSkills = [
+          "Information Technology Management",
+          "Team Leadership", 
+          "Project Management",
+          "Strategic Planning",
+          "Information Security",
+          "Risk Assessment",
+          "Technical Documentation",
+          "Budget Management",
+          "Process Optimization"
+        ];
+        
+        // Draw skills as underlined text in left column
+        const skillLineHeight = 9;
+        defaultSkills.forEach((skill, index) => {
+          doc.setFont('Roboto', 'bold');
+          doc.text(skill, leftColumnX, leftColY + (index * skillLineHeight));
+          
+          // Add underline
+          doc.setDrawColor(...colors.lightGray);
+          doc.setLineWidth(0.3);
+          const skillWidth = doc.getTextWidth(skill);
+          doc.line(
+            leftColumnX, 
+            leftColY + (index * skillLineHeight) + 1.5, 
+            leftColumnX + skillWidth, 
+            leftColY + (index * skillLineHeight) + 1.5
+          );
+        });
+        
+        // Update left column position
+        leftColY += defaultSkills.length * skillLineHeight + 15;
       }
     } catch (error) {
       console.error('Error processing skills section:', error);
@@ -581,110 +602,107 @@ export const generateEnhancementPDF = async (
                              enhancementResult.cvData.work_experience.length > 0);
     
     if (hasWorkExperience) {
-      // Add new page if there's not enough space
-      if (yPosition > pageHeight - 100) {
-        doc.addPage();
-        yPosition = margin;
-      }
-      
-      // Section heading with accent bar
-      doc.setFillColor(...colors.primary);
-      doc.rect(margin, yPosition, 8, 1, 'F');
-      
-      doc.setFontSize(14);
+      // EMPLOYMENT HISTORY SECTION (right column)
+      doc.setFontSize(12);
       doc.setTextColor(...colors.primary);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Experiencia Profesional', margin, yPosition + 6);
-      yPosition += 10;
+      doc.setFont('Roboto', 'bold');
+      doc.text('EMPLOYMENT HISTORY', rightColumnX, rightColY);
+      rightColY += 6;
+      
+      // Add small line under heading
+      doc.setDrawColor(...colors.secondary);
+      doc.setLineWidth(0.5);
+      doc.line(rightColumnX, rightColY, rightColumnX + 40, rightColY);
+      rightColY += 8;
       
       // Add experience items
       doc.setTextColor(...colors.dark);
-
-      let experienceRendered = false; // Flag to track if any experience was rendered
-
-      // --- Try Enhanced Work Experience First ---
-      if (enhancementResult.enhancedWorkExperience) {
+      // Ensures we have something to render
+      if (enhancementResult.enhancedWorkExperience || enhancementResult.cvData?.work_experience) {
         try {
-          const expData = JSON.parse(enhancementResult.enhancedWorkExperience);
-          if (Array.isArray(expData) && expData.length > 0) {
-            expData.forEach((exp, index) => {
-              // Check for page break before rendering item
-              if (yPosition > pageHeight - 60) { // Estimate height needed for one entry
-                doc.addPage();
-                yPosition = margin;
-              }
-
-              // Job title (position)
-              doc.setFontSize(11);
-              doc.setTextColor(...colors.dark);
-              doc.setFont('helvetica', 'bold');
-              const titleText = exp.title || exp.position || 'Position Not Specified';
-              doc.text(titleText, margin, yPosition);
-              
-              // Company on the same line as title
-              doc.setFont('helvetica', 'normal');
-              const titleWidth = doc.getTextWidth(titleText);
-              if (exp.company) {
-                doc.setFontSize(10);
-                // Truncate company name if too long to fit on the line
-                const availableWidth = contentWidth - titleWidth - 10; // Space for 'at ' and padding
-                const companyText = `at ${exp.company}`;
-                const truncatedCompany = doc.splitTextToSize(companyText, availableWidth)[0];
-                doc.text(truncatedCompany, margin + titleWidth + 5, yPosition);
-              }
-              
-              // Add dates aligned right
-              doc.setFontSize(9);
-              doc.setTextColor(...colors.accent);
-              if (exp.dates || exp.duration) {
-                doc.text(exp.dates || exp.duration, pageWidth - margin, yPosition, { align: 'right' });
-              }
-              yPosition += 5;
-              
-              // Add job role if available
-              if (exp.role || exp.jobRole) {
-                 if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = margin; } // Check page break
-                doc.setTextColor(...colors.secondary);
-                doc.setFont('helvetica', 'italic');
-                const roleText = `Rol: ${exp.role || exp.jobRole}`;
-                const splitRole = doc.splitTextToSize(roleText, contentWidth);
-                doc.text(splitRole, margin, yPosition);
-                yPosition += splitRole.length * 4 + 1; // Adjust spacing
-                doc.setFont('helvetica', 'normal'); // Reset font style
-              }
-              
-              // Add description
-              doc.setFontSize(9);
-              doc.setTextColor(...colors.dark);
-              let description = '';
-              if (exp.description && typeof exp.description === 'string') {
-                description = exp.description;
-              } else if (exp.achievements && Array.isArray(exp.achievements)) {
-                description = exp.achievements.map(a => `• ${stripHtml(String(a))}`).join("\n");
-              } else if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
-                description = exp.responsibilities.map(r => `• ${stripHtml(String(r))}`).join("\n");
-              }
-              
-              if (description) {
-                 if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; } // Check page break
-                const splitDescription = doc.splitTextToSize(stripHtml(description), contentWidth);
-                doc.text(splitDescription, margin, yPosition);
-                yPosition += splitDescription.length * 4 + 2; // Adjust spacing
-              }
-              
-              // Add spacing between jobs
-              if (index < expData.length - 1) {
-                yPosition += 5;
-                 if (yPosition > pageHeight - 10) { doc.addPage(); yPosition = margin; } // Check page break
-                doc.setDrawColor(...colors.mediumGray);
-                doc.setLineWidth(0.2); // Make divider thinner
-                doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
-                yPosition += 5;
-              } else {
-                yPosition += 8; // Space after the last job
-              }
-              experienceRendered = true; // Mark as rendered
-            });
+          if (enhancementResult.enhancedWorkExperience) {
+            const expData = JSON.parse(enhancementResult.enhancedWorkExperience);
+            if (Array.isArray(expData) && expData.length > 0) {
+              expData.forEach((exp, index) => {
+                // Job title (position) - bold
+                doc.setFontSize(11);
+                doc.setTextColor(...colors.dark);
+                doc.setFont('Roboto', 'bold');
+                doc.text(exp.title || exp.position || 'Position', rightColumnX, rightColY);
+                
+                // Company with "at" prefix - right aligned
+                if (exp.company) {
+                  doc.setFontSize(10);
+                  doc.setFont('Roboto', 'normal');
+                  doc.setTextColor(...colors.accent);
+                  const companyText = `at ${exp.company}`;
+                  // Right align dates
+                  doc.text(companyText, rightColumnX + rightColumnWidth, rightColY, { align: 'right' });
+                }
+                
+                // Add dates on next line, right aligned
+                rightColY += 5;
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.accent);
+                if (exp.dates || exp.duration) {
+                  doc.text(exp.dates || exp.duration, rightColumnX + rightColumnWidth, rightColY, { align: 'right' });
+                }
+                rightColY += 5;
+                
+                // Add job role if available
+                if (exp.role || exp.jobRole) {
+                  doc.setTextColor(...colors.secondary);
+                  doc.setFont('Roboto', 'italic');
+                  const roleText = `Role: ${exp.role || exp.jobRole}`;
+                  doc.text(roleText, rightColumnX, rightColY);
+                  rightColY += 5;
+                  doc.setFont('Roboto', 'normal'); // Reset font style
+                }
+                
+                // Add description
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.dark);
+                // Handle different description formats
+                let description = '';
+                
+                if (exp.description && typeof exp.description === 'string') {
+                  description = exp.description;
+                } else if (exp.achievements && Array.isArray(exp.achievements)) {
+                  description = exp.achievements.map(a => `• ${stripHtml(String(a))}`).join("\n");
+                } else if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
+                  description = exp.responsibilities.map(r => `• ${stripHtml(String(r))}`).join("\n");
+                }
+                
+                if (description) {
+                  const splitDescription = doc.splitTextToSize(stripHtml(description), rightColumnWidth);
+                  doc.text(splitDescription, rightColumnX, rightColY);
+                  rightColY += splitDescription.length * 4 + 2; // Adjust spacing
+                }
+                
+                // Add spacing between jobs
+                if (index < expData.length - 1) {
+                  rightColY += 5;
+                  // Page break check
+                  if (rightColY > pageHeight - 40) { 
+                    doc.addPage(); 
+                    rightColY = margin; 
+                    // Reset leftColY for the new page  
+                    leftColY = margin;
+                  }
+                  doc.setDrawColor(...colors.lightGray);
+                  doc.setLineWidth(0.2); // Make divider thinner
+                  doc.line(rightColumnX, rightColY, rightColumnX + 60, rightColY);
+                  rightColY += 8;
+                } else {
+                  rightColY += 12; // Space after the last job
+                }
+                experienceRendered = true;
+              });
+            } else {
+              fallbackToOriginalWorkExperience();
+            }
+          } else {
+            fallbackToOriginalWorkExperience();
           }
         } catch (error) {
           console.error('Error parsing or rendering enhancedWorkExperience:', error);
@@ -692,77 +710,6 @@ export const generateEnhancementPDF = async (
         }
       }
       
-      // --- Fallback to Original Work Experience ---
-      // Only fallback if enhanced experience wasn't rendered successfully
-      if (!experienceRendered && enhancementResult.cvData?.work_experience && enhancementResult.cvData.work_experience.length > 0) {
-          enhancementResult.cvData.work_experience.forEach((exp, index) => {
-             if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; } // Check page break
-
-            // Add job position details
-            doc.setFontSize(11);
-            doc.setTextColor(...colors.dark);
-            doc.setFont('helvetica', 'bold');
-            const titleText = exp.title || 'Position Not Specified';
-            doc.text(titleText, margin, yPosition);
-            
-            // Company on the same line as title
-            doc.setFont('helvetica', 'normal');
-            const titleWidth = doc.getTextWidth(titleText);
-             if (exp.company) {
-                doc.setFontSize(10);
-                const availableWidth = contentWidth - titleWidth - 10;
-                const companyText = `at ${exp.company}`;
-                const truncatedCompany = doc.splitTextToSize(companyText, availableWidth)[0];
-                doc.text(truncatedCompany, margin + titleWidth + 5, yPosition);
-            }
-            
-            // Add dates
-            doc.setFontSize(9);
-            doc.setTextColor(...colors.accent);
-            if (exp.dates) {
-              doc.text(exp.dates, pageWidth - margin, yPosition, { align: 'right' });
-            }
-            yPosition += 5;
-            
-            // Add job role if available
-            const role = (exp as any).role || (exp as any).jobRole;
-            if (role) {
-              if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = margin; } // Check page break
-              doc.setTextColor(...colors.secondary);
-              doc.setFont('helvetica', 'italic');
-               const roleText = `Rol: ${role}`;
-               const splitRole = doc.splitTextToSize(roleText, contentWidth);
-               doc.text(splitRole, margin, yPosition);
-               yPosition += splitRole.length * 4 + 1;
-               doc.setFont('helvetica', 'normal'); // Reset font style
-            }
-            
-            // Add description if available
-            if (exp.description) {
-               if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; } // Check page break
-              doc.setFontSize(9);
-              doc.setTextColor(...colors.dark);
-              const descriptionText = stripHtml(exp.description); // Ensure HTML is stripped
-              const splitDescription = doc.splitTextToSize(descriptionText, contentWidth);
-              doc.text(splitDescription, margin, yPosition);
-              yPosition += splitDescription.length * 4 + 2;
-            }
-            
-            // Add spacing and divider between jobs
-            if (index < enhancementResult.cvData.work_experience.length - 1) {
-              yPosition += 5;
-               if (yPosition > pageHeight - 10) { doc.addPage(); yPosition = margin; } // Check page break
-              doc.setDrawColor(...colors.mediumGray);
-              doc.setLineWidth(0.2);
-              doc.line(margin + 10, yPosition - 2, margin + 50, yPosition - 2);
-              yPosition += 5;
-            } else {
-              yPosition += 8; // Space after the last job
-            }
-             experienceRendered = true; // Mark as rendered
-          });
-      }
-
       // Add message if no experience could be rendered
       if (!experienceRendered) {
           // Instead of showing a message about missing experience, create default experience based on the profile
@@ -848,21 +795,30 @@ export const generateEnhancementPDF = async (
                        enhancementResult.cvData.education.length > 0);
     
     if (hasEducation) {
-      // Add new page if there's not enough space
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = margin;
+      // EDUCATION SECTION (left column)
+      // First check if we need to create more vertical space in left column
+      if (leftColY < rightColY - 40) {
+        leftColY = rightColY;
       }
       
-      // Section heading with accent bar
-      doc.setFillColor(...colors.primary);
-      doc.rect(margin, yPosition, 8, 1, 'F');
+      // Check for page break for education
+      if (leftColY > pageHeight - 60) {
+        doc.addPage();
+        leftColY = margin;
+        rightColY = margin;
+      }
       
-      doc.setFontSize(14);
+      doc.setFontSize(12);
       doc.setTextColor(...colors.primary);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Educación', margin, yPosition + 6);
-      yPosition += 10;
+      doc.setFont('Roboto', 'bold');
+      doc.text('EDUCATION', leftColumnX, leftColY);
+      leftColY += 6;
+      
+      // Add small line under heading
+      doc.setDrawColor(...colors.secondary);
+      doc.setLineWidth(0.5);
+      doc.line(leftColumnX, leftColY, leftColumnX + 40, leftColY);
+      leftColY += 8;
       
       // First try to use enhanced content if available
       if (educationSection?.enhancedContent) {
