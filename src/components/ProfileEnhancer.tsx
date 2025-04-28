@@ -403,12 +403,9 @@ const ProfileEnhancer: React.FC = () => {
     }
     
     try {
-      // Use the helper function to create a sanitized version of the enhancement result
-      const sanitizedEnhancement = prepareEnhancementResult(enhancementResult);
-      
-      // Make sure to pass all required arguments with additional safety checks
+      // Pass the original enhancementResult directly
       await generateEnhancementPDF(
-        sanitizedEnhancement,
+        enhancementResult,
         targetPlatform || 'resume',
         jobTitle || 'Position'
       );
@@ -571,37 +568,77 @@ const ProfileEnhancer: React.FC = () => {
     };
   };
 
-  const prepareEnhancementResult = (result: ProfileEnhancementResult) => {
-    // Create a deep copy with safe defaults
-    const safeResult = {
-      ...result,
-      profileScore: result.profileScore || { current: 0, potential: 0, keyFactors: [] },
-      keywordAnalysis: Array.isArray(result.keywordAnalysis) ? result.keywordAnalysis : [],
-      sectionEnhancements: Array.isArray(result.sectionEnhancements) ? result.sectionEnhancements.map(section => {
-        if (!section) return null;
-        
-        // If the enhancedContent is an object (like [object Object]), convert it to a formatted string
-        let content = section.enhancedContent;
-        if (typeof content === 'object' && content !== null) {
-          try {
-            content = JSON.stringify(content, null, 2);
-          } catch (e) {
-            content = String(content);
-          }
+  // Helper to turn enhanced experience content into safe HTML
+  const getEnhancedExperienceHTML = () => {
+    try {
+      const experienceSection = enhancementResult?.sectionEnhancements?.find(
+        (s) => s?.section === 'work_experience'
+      );
+      if (!experienceSection?.enhancedContent) return '';
+
+      const raw = experienceSection.enhancedContent;
+
+      // If raw is already HTML (contains tags), return as-is
+      if (typeof raw === 'string' && /<[^>]+>/.test(raw)) {
+        return raw;
+      }
+
+      // Attempt to parse JSON if it looks like JSON (starts with { or [)
+      if (typeof raw === 'string' && (raw.trim().startsWith('{') || raw.trim().startsWith('['))) {
+        try {
+          const parsed = JSON.parse(raw);
+          return experienceArrayToHTML(parsed);
+        } catch {
+          /* ignore parse error */
         }
-        
-        return {
-          ...section,
-          enhancedContent: content
-        };
-      }).filter(Boolean) : [],
-      industryTrends: result.industryTrends || [],
-      atsOptimization: result.atsOptimization || { currentScore: 0, recommendations: [], keywordsToAdd: [] },
-      competitiveAdvantage: result.competitiveAdvantage || { uniqueSellingPoints: [], differentiationStrategy: '', emergingOpportunities: [] },
-      actionPlan: result.actionPlan || { immediate: [], shortTerm: [], longTerm: [] }
-    };
-    
-    return safeResult as ProfileEnhancementResult; // Type assertion to match the expected type
+      }
+
+      // If content is an object / array already
+      if (Array.isArray(raw)) {
+        return experienceArrayToHTML(raw);
+      }
+
+      // Fallback – stringify safely if we reach here (avoid [object Object])
+      return '';
+    } catch (err) {
+      console.error('Error building enhanced experience HTML:', err);
+      return '';
+    }
+  };
+
+  // Convert array of experience objects to HTML blocks
+  const experienceArrayToHTML = (arr: any[]): string => {
+    if (!Array.isArray(arr)) return '';
+    return arr
+      .map((exp) => {
+        if (!exp || typeof exp !== 'object') return '';
+        const title = exp.title || exp.position || '';
+        const company = exp.company ? ` at ${exp.company}` : '';
+        const dates = exp.dates || exp.duration || '';
+        const description = exp.description || '';
+        const achievements = Array.isArray(exp.achievements) ? exp.achievements : [];
+        const responsibilities = Array.isArray(exp.responsibilities) ? exp.responsibilities : [];
+        const descHTML = description
+          ? `<p class="text-sm">${description}</p>`
+          : achievements.length
+          ? `<ul class="list-disc list-inside text-sm">${achievements
+              .map((a: string) => `<li>${a}</li>`) // ensure string
+              .join('')}</ul>`
+          : responsibilities.length
+          ? `<ul class="list-disc list-inside text-sm">${responsibilities
+              .map((r: string) => `<li>${r}</li>`) // ensure string
+              .join('')}</ul>`
+          : '';
+        return `
+          <div class="mb-3">
+            <div class="flex justify-between items-baseline">
+              <h3 class="text-md font-bold">${title}${company}</h3>
+              ${dates ? `<span class="text-sm text-gray-600">${dates}</span>` : ''}
+            </div>
+            ${descHTML}
+          </div>`;
+      })
+      .join('');
   };
 
   if (loading) {
@@ -905,8 +942,7 @@ const ProfileEnhancer: React.FC = () => {
                   {enhancementResult?.sectionEnhancements?.find(s => 
                     s?.section === 'work_experience')?.enhancedContent ? (
                     <div className="prose" dangerouslySetInnerHTML={{ 
-                      __html: enhancementResult?.sectionEnhancements?.find(s => 
-                        s?.section === 'work_experience')?.enhancedContent || ''
+                      __html: getEnhancedExperienceHTML()
                     }}></div>
                   ) : (
                     /* Otherwise, render the original work experience items */
@@ -1028,8 +1064,7 @@ const ProfileEnhancer: React.FC = () => {
                   {enhancementResult?.sectionEnhancements?.find(s => 
                     s?.section === 'work_experience')?.enhancedContent ? (
                     <div className="text-sm" dangerouslySetInnerHTML={{
-                      __html: enhancementResult?.sectionEnhancements?.find(s => 
-                        s?.section === 'work_experience')?.enhancedContent || ''
+                      __html: getEnhancedExperienceHTML()
                     }}></div>
                   ) : (
                     /* Otherwise, render the original work experience items */
