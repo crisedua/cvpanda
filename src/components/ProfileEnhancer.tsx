@@ -403,9 +403,12 @@ const ProfileEnhancer: React.FC = () => {
     }
     
     try {
+      // Use the helper function to create a sanitized version of the enhancement result
+      const sanitizedEnhancement = prepareEnhancementResult(enhancementResult);
+      
       // Make sure to pass all required arguments with additional safety checks
       await generateEnhancementPDF(
-        enhancementResult,
+        sanitizedEnhancement,
         targetPlatform || 'resume',
         jobTitle || 'Position'
       );
@@ -418,7 +421,7 @@ const ProfileEnhancer: React.FC = () => {
       }, 3000);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      setError('Failed to generate PDF');
+      setError('Failed to generate PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
